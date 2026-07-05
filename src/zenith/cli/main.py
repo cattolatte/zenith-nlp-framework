@@ -85,6 +85,24 @@ def chat(
         typer.echo("\n")
 
 
+@app.command(name="eval")
+def evaluate_cmd(
+    model: str = typer.Option(..., "--model", "-m", help="Path to a checkpoint (.pt)."),
+    corpus: str = typer.Option(..., "--corpus", "-c", help="Held-out text file to score."),
+    batch_size: int = typer.Option(32, "--batch-size"),
+) -> None:
+    """Report held-out loss and perplexity for a checkpoint."""
+    from ..checkpoint import load_checkpoint
+    from ..data import CausalLMDataset, load_corpus_file
+    from ..evaluation import evaluate
+
+    model_obj, tokenizer = load_checkpoint(model)
+    ids = load_corpus_file(corpus, tokenizer)
+    dataset = CausalLMDataset(ids, model_obj.config.block_size)
+    metrics = evaluate(model_obj, dataset, batch_size=batch_size)
+    typer.echo(f"loss: {metrics['loss']:.4f}  perplexity: {metrics['perplexity']:.2f}")
+
+
 @app.command(name="train")
 def train_hint() -> None:
     """How to launch training (Hydra owns argv, so it has its own entrypoint)."""

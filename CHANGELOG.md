@@ -6,6 +6,24 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] — Evaluation, a learned tokenizer & release-readiness
+
+The capstone: measurable, better on real text, ready to publish.
+
+### Added
+- `BPETokenizer` — from-scratch byte-level BPE (trainable, lossless), a drop-in
+  alternative to `ByteTokenizer`; checkpoints serialize it, and streaming
+  generalizes to any tokenizer via `token_bytes`.
+- `zenith.evaluation`: `evaluate()` / `perplexity()` (held-out, token-level).
+- CLI: `tokenizer` config group (`byte`/`bpe`) and `zenith eval -m <ckpt> -c <corpus>`.
+- `BENCHMARKS.md` (methodology + reproduction), `docs/modules.md`,
+  `scripts/download_corpus.py`.
+- `.github/workflows/release.yml` — PyPI trusted publishing on tag.
+
+### Notes
+- Benchmark numbers are intentionally left to a real run (no GPU/torch runtime in
+  the dev environment) — see ADR-0007.
+
 ## [0.5.0] — Serving & product surface
 
 Talk to a trained model.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zenith-nlp"
-version = "0.5.0"
+version = "0.6.0"
 description = "A from-scratch generative NLP library: decoder-only language models and text generation."
 readme = "README.md"
 requires-python = ">=3.10"

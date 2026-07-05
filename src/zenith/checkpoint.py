@@ -17,7 +17,7 @@ import torch
 
 from .generation import Generator
 from .models import DecoderConfig, DecoderLM
-from .tokenizers import ByteTokenizer
+from .tokenizers import BPETokenizer, ByteTokenizer
 
 __all__ = ["save_checkpoint", "load_checkpoint", "load_pretrained"]
 
@@ -27,14 +27,18 @@ _FORMAT = "zenith-lm-v1"
 def _tokenizer_spec(tokenizer: object | None) -> dict[str, Any]:
     if tokenizer is None or isinstance(tokenizer, ByteTokenizer):
         return {"type": "byte"}
+    if isinstance(tokenizer, BPETokenizer):
+        return tokenizer.to_dict()  # {"type": "bpe", "merges": [...]}
     return {"type": type(tokenizer).__name__}
 
 
-def _build_tokenizer(spec: dict[str, Any]) -> ByteTokenizer:
-    # Only the byte tokenizer exists in Phase 1; learned tokenizers land later.
-    if spec.get("type", "byte") != "byte":
-        raise ValueError(f"unsupported tokenizer type in checkpoint: {spec.get('type')!r}")
-    return ByteTokenizer()
+def _build_tokenizer(spec: dict[str, Any]) -> ByteTokenizer | BPETokenizer:
+    kind = spec.get("type", "byte")
+    if kind == "byte":
+        return ByteTokenizer()
+    if kind == "bpe":
+        return BPETokenizer.from_dict(spec)
+    raise ValueError(f"unsupported tokenizer type in checkpoint: {kind!r}")
 
 
 def save_checkpoint(
@@ -66,7 +70,7 @@ def save_checkpoint(
 
 def load_checkpoint(
     path: str | Path, *, map_location: str = "cpu"
-) -> tuple[DecoderLM, ByteTokenizer]:
+) -> tuple[DecoderLM, ByteTokenizer | BPETokenizer]:
     """Rebuild ``(model, tokenizer)`` from a checkpoint file."""
     payload = torch.load(str(path), map_location=map_location, weights_only=False)
     if payload.get("format") != _FORMAT:

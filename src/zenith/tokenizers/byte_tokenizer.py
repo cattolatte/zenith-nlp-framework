@@ -64,3 +64,7 @@ class ByteTokenizer:
         """
         byte_values = bytes(i for i in ids if i < 256)
         return byte_values.decode("utf-8", errors="replace")
+
+    def token_bytes(self, token: int) -> bytes:
+        """The raw bytes a single token expands to (for streaming)."""
+        return bytes([token]) if token < 256 else b""

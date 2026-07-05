@@ -1,0 +1,2 @@
+# Byte-level tokenizer: dependency-free, no training, lossless on any text.
+type: byte

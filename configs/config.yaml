@@ -4,6 +4,7 @@ defaults:
   - model: decoder
   - training: default
   - data: tiny
+  - tokenizer: byte     # `tokenizer=bpe` for a learned subword vocabulary
   - peft: none          # `peft=lora` to fine-tune a low-rank adapter
   - tracking: mlflow
 

@@ -239,14 +239,12 @@ class Generator:
             next_id = self._select(logits, idx, temperature, top_k, top_p, repetition_penalty)
             idx = torch.cat([idx, next_id], dim=1)
 
-            token = int(next_id.item())
-            if token < 256:
-                buffer.append(token)
-                try:
-                    yield buffer.decode("utf-8")
-                    buffer.clear()
-                except UnicodeDecodeError:
-                    pass  # wait for the rest of the multibyte character
+            buffer.extend(self.tokenizer.token_bytes(int(next_id.item())))
+            try:
+                yield buffer.decode("utf-8")
+                buffer.clear()
+            except UnicodeDecodeError:
+                pass  # wait for the rest of the multibyte character
 
             if idx.size(1) >= block_size:
                 break
