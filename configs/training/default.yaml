@@ -12,4 +12,8 @@ amp_dtype: bf16      # bf16 or fp16 (fp16 loss-scaling applies on CUDA)
 sample_prompt: ""
 sample_tokens: 160
 sample_temperature: 0.8
+log_samples: true
+# reproducibility
+deterministic: false
+record_dir: runs      # written under the Hydra run dir; null to disable
 save_path: zenith-lm.pt

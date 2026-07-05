@@ -12,7 +12,7 @@ Examples
 from __future__ import annotations
 
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from ..data import CausalLMDataset, load_corpus_file, train_val_split
 from ..models import DecoderConfig, DecoderLM
@@ -70,6 +70,9 @@ def main(cfg: DictConfig) -> None:
         sample_prompt=str(cfg.training.sample_prompt),
         sample_tokens=int(cfg.training.sample_tokens),
         sample_temperature=float(cfg.training.sample_temperature),
+        log_samples=bool(cfg.training.get("log_samples", True)),
+        deterministic=bool(cfg.training.get("deterministic", False)),
+        record_dir=cfg.training.get("record_dir", None),
         save_path=str(cfg.training.save_path),
         tracking_enabled=bool(cfg.tracking.enabled),
         experiment=str(cfg.tracking.experiment),
@@ -77,7 +80,9 @@ def main(cfg: DictConfig) -> None:
         run_name=cfg.tracking.run_name,
     )
 
-    CausalLMTrainer(model, tokenizer, training_config).fit(train_dataset, val_dataset)
+    run_config = OmegaConf.to_container(cfg, resolve=True)
+    trainer = CausalLMTrainer(model, tokenizer, training_config, run_config=run_config)
+    trainer.fit(train_dataset, val_dataset)
 
 
 if __name__ == "__main__":

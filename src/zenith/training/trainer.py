@@ -23,7 +23,8 @@ from __future__ import annotations
 
 import math
 from contextlib import nullcontext
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from typing import Any
 
 import torch
 from torch import nn
@@ -32,11 +33,12 @@ from torch.utils.data import DataLoader, Dataset
 
 from .. import distributed as dist
 from ..checkpoint import save_checkpoint
+from ..experiments import capture_environment, record_run
 from ..generation import Generator
 from ..models import DecoderLM
 from ..peft import LoraConfig, count_trainable_parameters, inject_lora, lora_parameters
 from ..tokenizers import ByteTokenizer
-from ..utils import get_logger, set_seed
+from ..utils import get_logger, set_deterministic, set_seed
 
 __all__ = ["TrainingConfig", "CausalLMTrainer"]
 
@@ -70,6 +72,10 @@ class TrainingConfig:
     sample_prompt: str = ""
     sample_tokens: int = 120
     sample_temperature: float = 0.8
+    log_samples: bool = True
+    # reproducibility
+    deterministic: bool = False
+    record_dir: str | None = None
     # checkpointing
     save_path: str = "zenith-lm.pt"
 
@@ -93,6 +99,9 @@ class CausalLMTrainer:
         Used for in-training text samples and saved with the checkpoint.
     config : TrainingConfig, optional
         Run hyperparameters; defaults are sensible for a tiny model.
+    run_config : dict, optional
+        The full run configuration (e.g. a resolved Hydra config) to log to MLflow
+        and record on disk. If omitted, the ``TrainingConfig`` itself is used.
     """
 
     def __init__(
@@ -100,10 +109,12 @@ class CausalLMTrainer:
         model: DecoderLM,
         tokenizer: ByteTokenizer | None = None,
         config: TrainingConfig | None = None,
+        run_config: dict[str, Any] | None = None,
     ) -> None:
         self.model = model
         self.tokenizer = tokenizer or ByteTokenizer()
         self.config = config or TrainingConfig()
+        self.run_config = run_config
         self._log = get_logger("zenith.training")
 
     def fit(
@@ -111,7 +122,11 @@ class CausalLMTrainer:
     ) -> dict[str, object]:
         """Run training and return a history dict; writes the best checkpoint."""
         cfg = self.config
-        set_seed(cfg.seed)
+        if cfg.deterministic:
+            set_deterministic(cfg.seed)
+        else:
+            set_seed(cfg.seed)
+        environment = capture_environment(cfg.seed)
         device = torch.device(cfg.device) if cfg.device else dist.resolve_device()
 
         with dist.distributed_context():
@@ -156,21 +171,17 @@ class CausalLMTrainer:
             main = dist.is_main_process()
             tracker = self._make_tracker() if main else None
             history: list[dict[str, float]] = []
+            samples: list[str] = []
             best = math.inf
 
             run_ctx = tracker.run(cfg.run_name) if tracker is not None else nullcontext()
             with run_ctx:
                 if tracker is not None:
                     trainable, total = count_trainable_parameters(raw)
+                    tracker.log_config(self._effective_config())
                     tracker.log_params(
                         {
-                            "epochs": cfg.epochs,
-                            "batch_size": cfg.batch_size,
-                            "learning_rate": cfg.learning_rate,
-                            "grad_accum_steps": accum,
                             "world_size": dist.world_size(),
-                            "amp": cfg.amp,
-                            "use_lora": cfg.use_lora,
                             "trainable_params": trainable,
                             "total_params": total,
                         }
@@ -195,7 +206,12 @@ class CausalLMTrainer:
                         if tracker is not None:
                             tracker.log_metrics(metrics, step=epoch)
                         self._log.info("epoch %d | %s", epoch + 1, _fmt(metrics))
-                        self._log_sample(raw)
+                        if cfg.log_samples:
+                            sample = self._generate_sample(raw)
+                            samples.append(sample)
+                            self._log.info("sample: %s", sample.replace("\n", " ")[:200])
+                            if tracker is not None:
+                                tracker.log_text(sample, f"samples/epoch_{epoch + 1}.txt")
                         score = metrics.get("val_loss", metrics["train_loss"])
                         if score < best:
                             best = score
@@ -204,7 +220,31 @@ class CausalLMTrainer:
                                 lora=cfg.lora if cfg.use_lora else None,
                             )
 
+                if main:
+                    self._record(tracker, history, samples, environment)
+
         return {"history": history, "best_loss": best, "checkpoint": cfg.save_path}
+
+    def _record(self, tracker, history, samples, environment) -> None:
+        """Log the checkpoint artifact and write an on-disk run record."""
+        cfg = self.config
+        from pathlib import Path
+
+        if tracker is not None and Path(cfg.save_path).exists():
+            tracker.log_artifact(cfg.save_path)
+        if cfg.record_dir is not None:
+            path = record_run(
+                cfg.record_dir,
+                config=self._effective_config(),
+                history=history,
+                samples=samples,
+                environment=environment,
+            )
+            self._log.info("recorded run to %s", path)
+
+    def _effective_config(self) -> dict[str, Any]:
+        """Full run config to log/record — the provided one, or the TrainingConfig."""
+        return dict(self.run_config) if self.run_config is not None else asdict(self.config)
 
     def _train_epoch(
         self, model, train_loader, optimizer, scheduler, scaler, loss_fn,
@@ -259,13 +299,12 @@ class CausalLMTrainer:
             steps += 1
         return total / max(steps, 1)
 
-    def _log_sample(self, model: DecoderLM) -> None:
-        sample = Generator(model, self.tokenizer).generate(
+    def _generate_sample(self, model: DecoderLM) -> str:
+        return Generator(model, self.tokenizer).generate(
             self.config.sample_prompt,
             max_new_tokens=self.config.sample_tokens,
             temperature=self.config.sample_temperature,
         )
-        self._log.info("sample: %s", sample.replace("\n", " ")[:200])
 
     def _make_tracker(self) -> object | None:
         if not self.config.tracking_enabled:

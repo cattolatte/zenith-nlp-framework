@@ -10,3 +10,4 @@ silently changing course.
 | [0002](0002-byte-level-tokenizer.md) | Ship a byte-level tokenizer first; defer learned BPE |
 | [0003](0003-kv-cache-and-decoding.md) | KV-cache is an opt-in path (training unchanged); decoding strategies live in the Generator |
 | [0004](0004-scaling-opt-in.md) | Scaling (LoRA/AMP/accumulation/DDP) is opt-in and default-off; QLoRA/FSDP deferred |
+| [0005](0005-run-records-and-reproducibility.md) | On-disk run records complement MLflow; determinism is best-effort; samples logged each epoch |
