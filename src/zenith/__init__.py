@@ -20,10 +20,11 @@ from .checkpoint import load_checkpoint, load_pretrained, save_checkpoint
 from .data import CausalLMDataset
 from .generation import Generator
 from .models import DecoderConfig, DecoderLM
+from .peft import LoraConfig, inject_lora
 from .tokenizers import ByteTokenizer
 from .training import CausalLMTrainer, TrainingConfig
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "__version__",
@@ -34,6 +35,8 @@ __all__ = [
     "Generator",
     "CausalLMTrainer",
     "TrainingConfig",
+    "LoraConfig",
+    "inject_lora",
     "save_checkpoint",
     "load_checkpoint",
     "load_pretrained",

@@ -2,32 +2,41 @@
 
 Design Principles
 -----------------
-Single-device, readable, and complete: next-token cross-entropy, AdamW, a
-linear-warmup-then-cosine-decay schedule, gradient clipping, best-checkpoint
-tracking, and optional MLflow logging. It samples text from the model at the end
-of each epoch so training is legible, not just a falling number.
+One readable loop that scales up on demand. The default path (single device, full
+fine-tuning) is unchanged from earlier releases; four opt-in capabilities layer on
+top without complicating that path:
 
-Distributed (DDP) training and parameter-efficient fine-tuning (LoRA) are
-deliberately *not* here — they arrive in a later phase, wired in when the loop
-actually needs them, rather than built speculatively now.
+- **LoRA** — train a low-rank adapter with the base frozen (``use_lora``).
+- **Gradient accumulation** — larger effective batch on limited memory
+  (``grad_accum_steps``).
+- **Mixed precision** — ``torch.autocast`` (+ a GradScaler for CUDA fp16)
+  (``amp``).
+- **Distributed data parallel** — multi-GPU via ``torchrun`` (auto-detected from
+  the environment; ``zenith.distributed`` degrades to single-process).
+
+Everything defaults off, so ``CausalLMTrainer(model).fit(dataset)`` behaves exactly
+as before. QLoRA and FSDP are intentionally deferred (they need GPU-only libraries
+that can't be exercised in CI).
 """
 
 from __future__ import annotations
 
 import math
 from contextlib import nullcontext
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import torch
 from torch import nn
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, Dataset
 
+from .. import distributed as dist
 from ..checkpoint import save_checkpoint
 from ..generation import Generator
 from ..models import DecoderLM
+from ..peft import LoraConfig, count_trainable_parameters, inject_lora, lora_parameters
 from ..tokenizers import ByteTokenizer
-from ..utils import get_logger, resolve_device, set_seed
+from ..utils import get_logger, set_seed
 
 __all__ = ["TrainingConfig", "CausalLMTrainer"]
 
@@ -45,12 +54,19 @@ class TrainingConfig:
     seed: int = 0
     device: str | None = None
     num_workers: int = 0
-    # experiment tracking (optional)
+    # scaling
+    grad_accum_steps: int = 1
+    amp: bool = False
+    amp_dtype: str = "bf16"  # "bf16" or "fp16"
+    # parameter-efficient fine-tuning
+    use_lora: bool = False
+    lora: LoraConfig = field(default_factory=LoraConfig)
+    # experiment tracking
     tracking_enabled: bool = False
     experiment: str = "zenith"
     tracking_uri: str | None = None
     run_name: str | None = None
-    # sampling during training (legibility)
+    # in-training samples
     sample_prompt: str = ""
     sample_tokens: int = 120
     sample_temperature: float = 0.8
@@ -96,96 +112,154 @@ class CausalLMTrainer:
         """Run training and return a history dict; writes the best checkpoint."""
         cfg = self.config
         set_seed(cfg.seed)
-        device = resolve_device(cfg.device)
-        model = self.model.to(device)
+        device = torch.device(cfg.device) if cfg.device else dist.resolve_device()
 
-        train_loader = DataLoader(
-            train_dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=cfg.num_workers
-        )
-        val_loader = (
-            DataLoader(val_dataset, batch_size=cfg.batch_size, num_workers=cfg.num_workers)
-            if val_dataset is not None
-            else None
-        )
+        with dist.distributed_context():
+            if cfg.use_lora:
+                inject_lora(self.model, cfg.lora)
 
-        optimizer = torch.optim.AdamW(
-            model.parameters(), lr=cfg.learning_rate, weight_decay=cfg.weight_decay
-        )
-        total_steps = cfg.epochs * max(len(train_loader), 1)
-        scheduler = LambdaLR(
-            optimizer, lambda step: _warmup_cosine(step, cfg.warmup_steps, total_steps)
-        )
-        loss_fn = nn.CrossEntropyLoss()
+            self.model.to(device)
+            model: nn.Module = dist.wrap_model(self.model)
+            raw = dist.unwrap_model(model)
 
-        tracker = self._make_tracker()
-        history: list[dict[str, float]] = []
-        best = math.inf
+            sampler = dist.make_sampler(train_dataset, shuffle=True)
+            train_loader = DataLoader(
+                train_dataset,
+                batch_size=cfg.batch_size,
+                sampler=sampler,
+                shuffle=sampler is None,
+                num_workers=cfg.num_workers,
+            )
+            val_loader = (
+                DataLoader(val_dataset, batch_size=cfg.batch_size, num_workers=cfg.num_workers)
+                if val_dataset is not None
+                else None
+            )
 
-        run_ctx = tracker.run(cfg.run_name) if tracker is not None else nullcontext()
-        with run_ctx:
-            if tracker is not None:
-                tracker.log_params(
-                    {
-                        "epochs": cfg.epochs,
-                        "batch_size": cfg.batch_size,
-                        "learning_rate": cfg.learning_rate,
-                        "parameters": model.num_parameters(),
-                        "block_size": model.config.block_size,
-                    }
-                )
+            params = lora_parameters(raw) if cfg.use_lora else list(raw.parameters())
+            optimizer = torch.optim.AdamW(
+                params, lr=cfg.learning_rate, weight_decay=cfg.weight_decay
+            )
+            accum = max(cfg.grad_accum_steps, 1)
+            total_steps = cfg.epochs * max(len(train_loader) // accum, 1)
+            scheduler = LambdaLR(
+                optimizer, lambda step: _warmup_cosine(step, cfg.warmup_steps, total_steps)
+            )
+            loss_fn = nn.CrossEntropyLoss()
 
-            for epoch in range(cfg.epochs):
-                model.train()
-                running, steps = 0.0, 0
-                for inputs, targets in train_loader:
-                    inputs, targets = inputs.to(device), targets.to(device)
-                    optimizer.zero_grad()
-                    logits = model(inputs)
-                    loss = loss_fn(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
-                    loss.backward()
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)
-                    optimizer.step()
-                    scheduler.step()
-                    running += loss.item()
-                    steps += 1
+            amp_dtype = torch.float16 if cfg.amp_dtype == "fp16" else torch.bfloat16
+            use_autocast = cfg.amp and device.type in ("cuda", "cpu")
+            scaler = torch.cuda.amp.GradScaler(
+                enabled=cfg.amp and device.type == "cuda" and amp_dtype is torch.float16
+            )
 
-                metrics: dict[str, float] = {
-                    "train_loss": running / max(steps, 1),
-                    "lr": scheduler.get_last_lr()[0],
-                }
-                if val_loader is not None:
-                    val_loss = self._evaluate(model, val_loader, loss_fn, device)
-                    metrics["val_loss"] = val_loss
-                    metrics["val_perplexity"] = math.exp(min(val_loss, 20.0))
+            main = dist.is_main_process()
+            tracker = self._make_tracker() if main else None
+            history: list[dict[str, float]] = []
+            best = math.inf
 
-                history.append(metrics)
+            run_ctx = tracker.run(cfg.run_name) if tracker is not None else nullcontext()
+            with run_ctx:
                 if tracker is not None:
-                    tracker.log_metrics(metrics, step=epoch)
-                self._log.info("epoch %d | %s", epoch + 1, _fmt(metrics))
-                self._log_sample(model)
+                    trainable, total = count_trainable_parameters(raw)
+                    tracker.log_params(
+                        {
+                            "epochs": cfg.epochs,
+                            "batch_size": cfg.batch_size,
+                            "learning_rate": cfg.learning_rate,
+                            "grad_accum_steps": accum,
+                            "world_size": dist.world_size(),
+                            "amp": cfg.amp,
+                            "use_lora": cfg.use_lora,
+                            "trainable_params": trainable,
+                            "total_params": total,
+                        }
+                    )
 
-                score = metrics.get("val_loss", metrics["train_loss"])
-                if score < best:
-                    best = score
-                    save_checkpoint(model, self.tokenizer, cfg.save_path)
+                for epoch in range(cfg.epochs):
+                    if sampler is not None:
+                        sampler.set_epoch(epoch)
+                    metrics = self._train_epoch(
+                        model, train_loader, optimizer, scheduler, scaler, loss_fn,
+                        device, use_autocast, amp_dtype, accum, params, cfg.grad_clip,
+                    )
+                    if val_loader is not None:
+                        val_loss = self._evaluate(
+                            model, val_loader, loss_fn, device, use_autocast, amp_dtype
+                        )
+                        metrics["val_loss"] = val_loss
+                        metrics["val_perplexity"] = math.exp(min(val_loss, 20.0))
+
+                    history.append(metrics)
+                    if main:
+                        if tracker is not None:
+                            tracker.log_metrics(metrics, step=epoch)
+                        self._log.info("epoch %d | %s", epoch + 1, _fmt(metrics))
+                        self._log_sample(raw)
+                        score = metrics.get("val_loss", metrics["train_loss"])
+                        if score < best:
+                            best = score
+                            save_checkpoint(
+                                raw, self.tokenizer, cfg.save_path,
+                                lora=cfg.lora if cfg.use_lora else None,
+                            )
 
         return {"history": history, "best_loss": best, "checkpoint": cfg.save_path}
 
+    def _train_epoch(
+        self, model, train_loader, optimizer, scheduler, scaler, loss_fn,
+        device, use_autocast, amp_dtype, accum, params, grad_clip,
+    ) -> dict[str, float]:
+        model.train()
+        optimizer.zero_grad()
+        running, batches = 0.0, 0
+        for i, (inputs, targets) in enumerate(train_loader):
+            inputs, targets = inputs.to(device), targets.to(device)
+            with self._autocast(device, use_autocast, amp_dtype):
+                logits = model(inputs)
+                loss = loss_fn(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
+            scaler.scale(loss / accum).backward()
+            if (i + 1) % accum == 0:
+                self._optimizer_step(scaler, optimizer, params, grad_clip)
+                scheduler.step()
+            running += loss.item()
+            batches += 1
+        if batches % accum != 0:  # flush a partial final accumulation group
+            self._optimizer_step(scaler, optimizer, params, grad_clip)
+            scheduler.step()
+        return {"train_loss": running / max(batches, 1), "lr": scheduler.get_last_lr()[0]}
+
+    @staticmethod
+    def _autocast(device, use_autocast, amp_dtype):
+        """Autocast context when AMP is on, else a no-op (avoids MPS device issues)."""
+        if use_autocast:
+            return torch.autocast(device_type=device.type, dtype=amp_dtype)
+        return nullcontext()
+
+    @staticmethod
+    def _optimizer_step(scaler, optimizer, params, grad_clip) -> None:
+        scaler.unscale_(optimizer)
+        torch.nn.utils.clip_grad_norm_(params, grad_clip)
+        scaler.step(optimizer)
+        scaler.update()
+        optimizer.zero_grad()
+
     @torch.no_grad()
     def _evaluate(
-        self, model: DecoderLM, loader: DataLoader, loss_fn: nn.Module, device: torch.device
+        self, model, loader, loss_fn, device, use_autocast, amp_dtype
     ) -> float:
         model.eval()
         total, steps = 0.0, 0
         for inputs, targets in loader:
             inputs, targets = inputs.to(device), targets.to(device)
-            logits = model(inputs)
-            total += loss_fn(logits.reshape(-1, logits.size(-1)), targets.reshape(-1)).item()
+            with self._autocast(device, use_autocast, amp_dtype):
+                logits = model(inputs)
+                loss = loss_fn(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
+            total += loss.item()
             steps += 1
         return total / max(steps, 1)
 
     def _log_sample(self, model: DecoderLM) -> None:
-        """Print a short generated sample so training is legible."""
         sample = Generator(model, self.tokenizer).generate(
             self.config.sample_prompt,
             max_new_tokens=self.config.sample_tokens,

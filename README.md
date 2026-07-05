@@ -37,10 +37,13 @@ ships its own and does not depend on Polaris.
   repetition penalty, and beam search, with a KV-cache for efficient decoding.
 - **Causal-LM training** (`CausalLMTrainer`) — warmup/cosine schedule, gradient
   clipping, best-checkpoint saving, in-training samples, optional MLflow tracking.
+- **Efficient fine-tuning & scaling** — LoRA adapters (`zenith.peft`), gradient
+  accumulation, mixed precision (AMP), and `torchrun`-native distributed (DDP)
+  training — all opt-in.
 - **Hydra-configured** runs and sweeps; a small `zenith` CLI.
 
-On the roadmap: LoRA/QLoRA and distributed (DDP) training, and a streaming
-generation service.
+On the roadmap: a streaming generation service, plus QLoRA and FSDP for
+larger-scale training.
 
 ## Install
 
@@ -59,7 +62,10 @@ own text):
 ```bash
 python -m zenith.cli.train                                  # defaults
 python -m zenith.cli.train training.epochs=50 model.embed_dim=384
+python -m zenith.cli.train peft=lora                        # LoRA fine-tuning
+python -m zenith.cli.train training.amp=true training.grad_accum_steps=4
 python -m zenith.cli.train -m training.learning_rate=1e-3,3e-4,1e-4   # sweep
+torchrun --nproc_per_node=4 -m zenith.cli.train             # multi-GPU (DDP)
 ```
 
 Generate text from a trained checkpoint:
