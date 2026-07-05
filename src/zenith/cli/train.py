@@ -14,18 +14,27 @@ from __future__ import annotations
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from ..data import CausalLMDataset, load_corpus_file, train_val_split
+from ..data import CausalLMDataset, encode_corpus, train_val_split
 from ..models import DecoderConfig, DecoderLM
 from ..peft import LoraConfig
-from ..tokenizers import ByteTokenizer
+from ..tokenizers import BPETokenizer, ByteTokenizer
 from ..training import CausalLMTrainer, TrainingConfig
+
+
+def _build_tokenizer(tok_cfg, text: str):
+    """Byte tokenizer, or a BPE tokenizer trained on the corpus."""
+    if tok_cfg.get("type", "byte") == "bpe":
+        return BPETokenizer().train([text], int(tok_cfg.get("vocab_size", 1024)))
+    return ByteTokenizer()
 
 
 @hydra.main(version_base=None, config_path="../../../configs", config_name="config")
 def main(cfg: DictConfig) -> None:
-    tokenizer = ByteTokenizer()
+    from pathlib import Path
 
-    ids = load_corpus_file(cfg.data.corpus_path, tokenizer)
+    text = Path(cfg.data.corpus_path).read_text(encoding="utf-8")
+    tokenizer = _build_tokenizer(cfg.get("tokenizer", {}), text)
+    ids = encode_corpus(text, tokenizer)
     train_ids, val_ids = train_val_split(ids, cfg.data.val_fraction)
 
     block_size = int(cfg.model.block_size)

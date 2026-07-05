@@ -18,25 +18,29 @@ from __future__ import annotations
 
 from .checkpoint import load_checkpoint, load_pretrained, save_checkpoint
 from .data import CausalLMDataset
+from .evaluation import evaluate, perplexity
 from .generation import Generator
 from .models import DecoderConfig, DecoderLM
 from .peft import LoraConfig, inject_lora
-from .tokenizers import ByteTokenizer
+from .tokenizers import BPETokenizer, ByteTokenizer
 from .training import CausalLMTrainer, TrainingConfig
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 __all__ = [
     "__version__",
     "DecoderLM",
     "DecoderConfig",
     "ByteTokenizer",
+    "BPETokenizer",
     "CausalLMDataset",
     "Generator",
     "CausalLMTrainer",
     "TrainingConfig",
     "LoraConfig",
     "inject_lora",
+    "evaluate",
+    "perplexity",
     "save_checkpoint",
     "load_checkpoint",
     "load_pretrained",

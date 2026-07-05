@@ -31,22 +31,24 @@ ships its own and does not depend on Polaris.
 
 - **Decoder-only transformer** (`DecoderLM`) — causal self-attention, pre-norm
   blocks, tied embeddings, written from scratch.
-- **Byte-level tokenizer** (`ByteTokenizer`) — dependency-free, lossless on any
-  text.
+- **Tokenizers** — a dependency-free byte-level tokenizer (`ByteTokenizer`) and a
+  from-scratch, trainable byte-level BPE (`BPETokenizer`), both lossless.
 - **Text generation** (`Generator`) — greedy, temperature, top-k, nucleus (top-p),
-  repetition penalty, and beam search, with a KV-cache for efficient decoding.
+  repetition penalty, and beam search, with a KV-cache and streaming.
 - **Causal-LM training** (`CausalLMTrainer`) — warmup/cosine schedule, gradient
   clipping, best-checkpoint saving, per-epoch samples, MLflow tracking, on-disk
   run records, and a deterministic mode.
 - **Efficient fine-tuning & scaling** — LoRA adapters (`zenith.peft`), gradient
   accumulation, mixed precision (AMP), and `torchrun`-native distributed (DDP)
   training — all opt-in.
+- **Evaluation** — held-out `perplexity` / `evaluate`, and a `zenith eval` command.
 - **Serving** — a FastAPI service (`POST /generate`, SSE `POST /generate/stream`),
   a `zenith serve` command, and an interactive `zenith chat` REPL.
 - **Hydra-configured** runs and sweeps; a small `zenith` CLI.
 
-On the roadmap: a learned BPE tokenizer, QLoRA/FSDP for larger-scale training, and
-sweep-result aggregation.
+See [BENCHMARKS.md](BENCHMARKS.md) for the evaluation methodology and
+[docs/modules.md](docs/modules.md) for a module overview. On the roadmap:
+QLoRA/FSDP for larger-scale training, and sweep-result aggregation.
 
 ## Install
 
@@ -65,10 +67,17 @@ own text):
 ```bash
 python -m zenith.cli.train                                  # defaults
 python -m zenith.cli.train training.epochs=50 model.embed_dim=384
+python -m zenith.cli.train tokenizer=bpe                    # from-scratch BPE
 python -m zenith.cli.train peft=lora                        # LoRA fine-tuning
 python -m zenith.cli.train training.amp=true training.grad_accum_steps=4
 python -m zenith.cli.train -m training.learning_rate=1e-3,3e-4,1e-4   # sweep
 torchrun --nproc_per_node=4 -m zenith.cli.train             # multi-GPU (DDP)
+```
+
+Evaluate held-out perplexity:
+
+```bash
+zenith eval -m zenith-lm.pt -c data/tiny_corpus.txt
 ```
 
 Generate text from a trained checkpoint:
