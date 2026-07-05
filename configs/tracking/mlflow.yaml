@@ -1,0 +1,6 @@
+# Experiment tracking is off by default. Set enabled=true (and optionally point
+# tracking_uri at the docker-compose MLflow UI) to log runs.
+enabled: false
+experiment: zenith
+tracking_uri: null
+run_name: null

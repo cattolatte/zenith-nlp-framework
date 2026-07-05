@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zenith-nlp"
+version = "0.1.0"
+description = "A from-scratch generative NLP library: decoder-only language models and text generation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "K Satya Sai Nischal" }]
+keywords = ["nlp", "generation", "language-model", "transformer", "decoder", "from-scratch", "pytorch"]
+classifiers = [
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Zenith stands on its own. The model math is from scratch; only tensor primitives
+# and configuration are required at runtime.
+dependencies = [
+    "torch>=2.0",
+    "hydra-core>=1.3",
+    "omegaconf>=2.3",
+]
+
+[project.optional-dependencies]
+tracking = ["mlflow>=2.5"]
+cli = ["typer>=0.9"]
+# Optional interop with the encoder-side sibling engine (not required).
+polaris = ["polaris-nlp>=1.1.0"]
+dev = ["pytest>=7.4", "ruff>=0.5", "black>=24.0", "mypy>=1.8"]
+all = ["mlflow>=2.5", "typer>=0.9"]
+
+[project.urls]
+Homepage = "https://github.com/cattolatte/zenith-nlp-framework"
+
+[project.scripts]
+zenith = "zenith.cli.main:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["zenith._incubating*"]
+
+[tool.black]
+line-length = 100
+force-exclude = "src/zenith/_incubating"
+
+[tool.ruff]
+line-length = 100
+extend-exclude = ["src/zenith/_incubating"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
