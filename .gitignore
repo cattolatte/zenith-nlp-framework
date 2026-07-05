@@ -27,3 +27,7 @@ zenith-lm.pt
 
 # OS junk
 .DS_Store
+
+# Local training outputs
+runs/
+data/tiny_shakespeare.txt
