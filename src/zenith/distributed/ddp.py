@@ -63,9 +63,16 @@ def is_main_process() -> bool:
 
 
 def resolve_device() -> torch.device:
-    """The device this process trains on."""
+    """The device this process trains on.
+
+    In distributed runs without CUDA we fall back to CPU (gloo): PyTorch's
+    collective ops are not implemented for Apple MPS, so DDP on MPS would crash.
+    Single-process runs still use MPS when available.
+    """
     if torch.cuda.is_available():
         return torch.device(f"cuda:{local_rank()}")
+    if is_distributed():
+        return torch.device("cpu")
     if torch.backends.mps.is_available():
         return torch.device("mps")
     return torch.device("cpu")

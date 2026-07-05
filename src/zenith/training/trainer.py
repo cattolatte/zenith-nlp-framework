@@ -80,6 +80,14 @@ class TrainingConfig:
     save_path: str = "zenith-lm.pt"
 
 
+def _grad_scaler(enabled: bool):
+    """A GradScaler using the modern ``torch.amp`` API, falling back for old torch."""
+    try:
+        return torch.amp.GradScaler("cuda", enabled=enabled)
+    except (AttributeError, TypeError):  # torch < 2.3
+        return torch.cuda.amp.GradScaler(enabled=enabled)
+
+
 def _warmup_cosine(step: int, warmup: int, total: int) -> float:
     """Linear warmup to 1.0, then cosine decay toward 0."""
     if step < warmup:
@@ -164,9 +172,7 @@ class CausalLMTrainer:
 
             amp_dtype = torch.float16 if cfg.amp_dtype == "fp16" else torch.bfloat16
             use_autocast = cfg.amp and device.type in ("cuda", "cpu")
-            scaler = torch.cuda.amp.GradScaler(
-                enabled=cfg.amp and device.type == "cuda" and amp_dtype is torch.float16
-            )
+            scaler = _grad_scaler(cfg.amp and device.type == "cuda" and amp_dtype is torch.float16)
 
             main = dist.is_main_process()
             tracker = self._make_tracker() if main else None

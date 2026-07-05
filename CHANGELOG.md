@@ -6,6 +6,15 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.1] — Fixes
+
+### Fixed
+- Distributed runs without CUDA now fall back to CPU (gloo) instead of MPS, since
+  PyTorch collective ops aren't implemented for Apple MPS — `torchrun` no longer
+  crashes on a Mac (it runs on CPU; DDP is really for multi-GPU CUDA).
+- Use the modern `torch.amp.GradScaler` API, silencing the deprecation warning on
+  recent PyTorch.
+
 ## [0.6.0] — Evaluation, a learned tokenizer & release-readiness
 
 The capstone: measurable, better on real text, ready to publish.
