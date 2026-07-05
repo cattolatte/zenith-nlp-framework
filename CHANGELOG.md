@@ -6,6 +6,24 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] — Decoding strategies & KV-cache
+
+Depth for generation: richer decoding and efficient autoregressive inference.
+
+### Added
+- **Decoding strategies** in `Generator`: top-k, nucleus (top-p), and a
+  repetition penalty, alongside temperature and greedy.
+- **Beam search** — deterministic, length-normalized (`beam_search_ids` /
+  `generate(..., num_beams=N)`).
+- **KV-cache** (`KVCache`) for incremental decoding: attention appends per-step
+  keys/values and applies an offset-derived causal mask. Enabled by default for
+  sampling (`use_cache=True`), numerically equivalent to a full recompute.
+
+### Notes
+- Cached sampling is bounded by the model's `block_size` context window.
+- Training / full-forward behaviour is unchanged (the cacheless path is identical
+  to v0.1.0).
+
 ## [0.1.0] — Core generative engine
 
 First slice of Zenith's new identity: a from-scratch generative NLP library.

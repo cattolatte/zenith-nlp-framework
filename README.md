@@ -33,13 +33,14 @@ ships its own and does not depend on Polaris.
   blocks, tied embeddings, written from scratch.
 - **Byte-level tokenizer** (`ByteTokenizer`) — dependency-free, lossless on any
   text.
-- **Text generation** (`Generator`) — greedy and temperature sampling.
+- **Text generation** (`Generator`) — greedy, temperature, top-k, nucleus (top-p),
+  repetition penalty, and beam search, with a KV-cache for efficient decoding.
 - **Causal-LM training** (`CausalLMTrainer`) — warmup/cosine schedule, gradient
   clipping, best-checkpoint saving, in-training samples, optional MLflow tracking.
 - **Hydra-configured** runs and sweeps; a small `zenith` CLI.
 
-On the roadmap: top-k / nucleus / beam decoding with KV-cache, LoRA/QLoRA and
-distributed (DDP) training, and a streaming generation service.
+On the roadmap: LoRA/QLoRA and distributed (DDP) training, and a streaming
+generation service.
 
 ## Install
 

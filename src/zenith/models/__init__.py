@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from .decoder import CausalSelfAttention, DecoderBlock, DecoderConfig, DecoderLM
+from .decoder import CausalSelfAttention, DecoderBlock, DecoderConfig, DecoderLM, KVCache
 
-__all__ = ["CausalSelfAttention", "DecoderBlock", "DecoderConfig", "DecoderLM"]
+__all__ = ["CausalSelfAttention", "DecoderBlock", "DecoderConfig", "DecoderLM", "KVCache"]

@@ -8,3 +8,4 @@ silently changing course.
 |---|----------|
 | [0001](0001-generative-identity.md) | Zenith is a generative (decoder) library; Polaris is an optional sibling, not a dependency |
 | [0002](0002-byte-level-tokenizer.md) | Ship a byte-level tokenizer first; defer learned BPE |
+| [0003](0003-kv-cache-and-decoding.md) | KV-cache is an opt-in path (training unchanged); decoding strategies live in the Generator |
