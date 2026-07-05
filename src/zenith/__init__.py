@@ -23,7 +23,7 @@ from .models import DecoderConfig, DecoderLM
 from .tokenizers import ByteTokenizer
 from .training import CausalLMTrainer, TrainingConfig
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "__version__",

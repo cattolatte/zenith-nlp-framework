@@ -12,6 +12,12 @@ Built on tensor primitives (own attention, own layer norm, own blocks); PyTorch
 supplies autograd, ``nn.Embedding``/``nn.Linear`` containers and optimizers, not
 the architecture. Pre-norm blocks, GELU feed-forward, and weight-tied embeddings —
 the small, well-understood decoder recipe, written to be read.
+
+Attention supports an optional :class:`KVCache` for efficient autoregressive
+decoding: without a cache (training / a full forward) it uses a precomputed
+triangular mask; with a cache it appends this step's keys/values and applies a
+positional mask derived from the running offset. The two paths are numerically
+equivalent — see the cache-equivalence test.
 """
 
 from __future__ import annotations
@@ -22,7 +28,7 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 
-__all__ = ["DecoderConfig", "CausalSelfAttention", "DecoderBlock", "DecoderLM"]
+__all__ = ["DecoderConfig", "KVCache", "CausalSelfAttention", "DecoderBlock", "DecoderLM"]
 
 
 @dataclass(frozen=True)
@@ -56,6 +62,33 @@ class DecoderConfig:
     dropout: float = 0.1
 
 
+class KVCache:
+    """Per-layer key/value cache for incremental autoregressive decoding.
+
+    Holds the running keys and values for every layer so that generating the next
+    token only requires a forward pass over the *new* token(s) rather than the
+    whole sequence. ``length`` tracks how many positions are cached (updated once
+    per model forward, by :class:`DecoderLM`).
+    """
+
+    def __init__(self, num_layers: int) -> None:
+        self._k: list[torch.Tensor | None] = [None] * num_layers
+        self._v: list[torch.Tensor | None] = [None] * num_layers
+        self.length = 0
+
+    def update(
+        self, layer_idx: int, k: torch.Tensor, v: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Append this step's ``k``/``v`` for ``layer_idx`` and return the full pair."""
+        past_k, past_v = self._k[layer_idx], self._v[layer_idx]
+        if past_k is None:
+            self._k[layer_idx], self._v[layer_idx] = k, v
+        else:
+            self._k[layer_idx] = torch.cat([past_k, k], dim=2)
+            self._v[layer_idx] = torch.cat([past_v, v], dim=2)
+        return self._k[layer_idx], self._v[layer_idx]
+
+
 class LayerNorm(nn.Module):
     """Layer normalization over the last dimension, from scratch."""
 
@@ -76,7 +109,8 @@ class CausalSelfAttention(nn.Module):
 
     Each position may attend only to itself and earlier positions — the single
     property that makes this a *decoder*. Query/key/value projections are computed
-    together for efficiency; the causal mask is a cached lower-triangular buffer.
+    together; without a cache the mask is a cached lower-triangular buffer, with a
+    cache the mask is derived from the running ``offset``.
 
     Parameters
     ----------
@@ -104,24 +138,45 @@ class CausalSelfAttention(nn.Module):
         self.attn_dropout = nn.Dropout(dropout)
         self.proj_dropout = nn.Dropout(dropout)
 
-        # Lower-triangular causal mask: position i may see keys 0..i.
         causal = torch.tril(torch.ones(block_size, block_size)).view(1, 1, block_size, block_size)
         self.register_buffer("mask", causal)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Attend over ``x`` of shape ``(batch, seq, embed)``."""
+    def forward(
+        self,
+        x: torch.Tensor,
+        *,
+        cache: KVCache | None = None,
+        layer_idx: int = 0,
+        offset: int = 0,
+    ) -> torch.Tensor:
+        """Attend over ``x`` of shape ``(batch, seq, embed)``.
+
+        With ``cache`` set, ``x`` is the new token(s) only; keys/values are read
+        from and written to ``cache[layer_idx]`` and the mask uses ``offset`` (the
+        number of already-cached positions).
+        """
         batch, seq, embed = x.shape
         q, k, v = self.qkv(x).split(embed, dim=2)
-        # (batch, heads, seq, head_dim)
         q = q.view(batch, seq, self.num_heads, self.head_dim).transpose(1, 2)
         k = k.view(batch, seq, self.num_heads, self.head_dim).transpose(1, 2)
         v = v.view(batch, seq, self.num_heads, self.head_dim).transpose(1, 2)
 
-        scores = (q @ k.transpose(-2, -1)) / math.sqrt(self.head_dim)
-        scores = scores.masked_fill(self.mask[:, :, :seq, :seq] == 0, float("-inf"))
-        weights = self.attn_dropout(torch.softmax(scores, dim=-1))
+        if cache is not None:
+            k, v = cache.update(layer_idx, k, v)
 
-        out = weights @ v  # (batch, heads, seq, head_dim)
+        total = k.size(2)
+        scores = (q @ k.transpose(-2, -1)) / math.sqrt(self.head_dim)
+        if cache is None:
+            scores = scores.masked_fill(self.mask[:, :, :seq, :seq] == 0, float("-inf"))
+        else:
+            # Query i sits at absolute position offset+i and may see keys 0..offset+i.
+            q_pos = torch.arange(offset, offset + seq, device=x.device).unsqueeze(1)
+            k_pos = torch.arange(total, device=x.device).unsqueeze(0)
+            disallowed = (k_pos > q_pos).view(1, 1, seq, total)
+            scores = scores.masked_fill(disallowed, float("-inf"))
+
+        weights = self.attn_dropout(torch.softmax(scores, dim=-1))
+        out = weights @ v
         out = out.transpose(1, 2).contiguous().view(batch, seq, embed)
         return self.proj_dropout(self.proj(out))
 
@@ -145,8 +200,15 @@ class DecoderBlock(nn.Module):
             nn.Dropout(dropout),
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x + self.attention(self.norm1(x))
+    def forward(
+        self,
+        x: torch.Tensor,
+        *,
+        cache: KVCache | None = None,
+        layer_idx: int = 0,
+        offset: int = 0,
+    ) -> torch.Tensor:
+        x = x + self.attention(self.norm1(x), cache=cache, layer_idx=layer_idx, offset=offset)
         x = x + self.feed_forward(self.norm2(x))
         return x
 
@@ -193,18 +255,25 @@ class DecoderLM(nn.Module):
         # Weight tying: the input embedding and output projection share weights.
         self.lm_head.weight = self.token_embedding.weight
 
-    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
-        """Return next-token logits of shape ``(batch, seq, vocab_size)``."""
+    def forward(self, input_ids: torch.Tensor, *, cache: KVCache | None = None) -> torch.Tensor:
+        """Return next-token logits of shape ``(batch, seq, vocab_size)``.
+
+        With ``cache``, ``input_ids`` holds only the new token(s); positions are
+        offset by the number of already-cached tokens.
+        """
         _, seq = input_ids.shape
-        if seq > self.config.block_size:
+        offset = cache.length if cache is not None else 0
+        if offset + seq > self.config.block_size:
             raise ValueError(
-                f"sequence length {seq} exceeds block_size {self.config.block_size}"
+                f"sequence position {offset + seq} exceeds block_size {self.config.block_size}"
             )
-        positions = torch.arange(seq, device=input_ids.device)
+        positions = torch.arange(offset, offset + seq, device=input_ids.device)
         x = self.token_embedding(input_ids) + self.position_embedding(positions)
         x = self.dropout(x)
-        for block in self.blocks:
-            x = block(x)
+        for layer_idx, block in enumerate(self.blocks):
+            x = block(x, cache=cache, layer_idx=layer_idx, offset=offset)
+        if cache is not None:
+            cache.length += seq
         return self.lm_head(self.norm(x))
 
     def num_parameters(self) -> int:
