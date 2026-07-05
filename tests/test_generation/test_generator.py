@@ -120,3 +120,10 @@ def test_generation_stops_at_block_size():
     gen = _gen()  # block_size=16
     out = gen.generate_ids(torch.zeros(1, 4, dtype=torch.long), max_new_tokens=100, temperature=0.0)
     assert out.size(1) <= 16
+
+
+def test_stream_yields_utf8_strings():
+    gen = _gen()
+    chunks = list(gen.stream("hi", max_new_tokens=6))
+    assert all(isinstance(c, str) for c in chunks)
+    assert isinstance("".join(chunks), str)

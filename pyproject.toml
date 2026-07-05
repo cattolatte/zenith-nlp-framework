@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zenith-nlp"
-version = "0.4.0"
+version = "0.5.0"
 description = "A from-scratch generative NLP library: decoder-only language models and text generation."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -33,10 +33,11 @@ dependencies = [
 [project.optional-dependencies]
 tracking = ["mlflow>=2.5"]
 cli = ["typer>=0.9"]
+serving = ["fastapi>=0.104", "uvicorn[standard]>=0.24", "pydantic>=2.0"]
 # Optional interop with the encoder-side sibling engine (not required).
 polaris = ["polaris-nlp>=1.1.0"]
-dev = ["pytest>=7.4", "ruff>=0.5", "black>=24.0", "mypy>=1.8"]
-all = ["mlflow>=2.5", "typer>=0.9"]
+dev = ["pytest>=7.4", "ruff>=0.5", "black>=24.0", "mypy>=1.8", "httpx>=0.24"]
+all = ["mlflow>=2.5", "typer>=0.9", "fastapi>=0.104", "uvicorn[standard]>=0.24", "pydantic>=2.0"]
 
 [project.urls]
 Homepage = "https://github.com/cattolatte/zenith-nlp-framework"

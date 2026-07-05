@@ -47,6 +47,44 @@ def generate(
     typer.echo(prompt + text)
 
 
+@app.command()
+def serve(
+    model: str = typer.Option(..., "--model", "-m", help="Path to a checkpoint (.pt)."),
+    host: str = typer.Option("0.0.0.0", help="Bind host."),
+    port: int = typer.Option(8000, help="Bind port."),
+) -> None:
+    """Serve a checkpoint over HTTP (POST /generate, POST /generate/stream)."""
+    from ..serving import serve as _serve
+
+    _serve(model_path=model, host=host, port=port)
+
+
+@app.command()
+def chat(
+    model: str = typer.Option(..., "--model", "-m", help="Path to a checkpoint (.pt)."),
+    max_new_tokens: int = typer.Option(200, "--max-new-tokens", "-n"),
+    temperature: float = typer.Option(0.8, "--temperature", "-t"),
+    top_p: float = typer.Option(0.9, "--top-p"),
+) -> None:
+    """Interactive REPL: type a prompt, watch the model stream a continuation."""
+    from ..checkpoint import load_pretrained
+
+    generator = load_pretrained(model)
+    typer.echo("Zenith chat — Ctrl-C or empty line to exit.\n")
+    while True:
+        try:
+            prompt = typer.prompt("you", prompt_suffix=" > ")
+        except (EOFError, KeyboardInterrupt):
+            break
+        if not prompt.strip():
+            break
+        for chunk in generator.stream(
+            prompt, max_new_tokens=max_new_tokens, temperature=temperature, top_p=top_p
+        ):
+            typer.echo(chunk, nl=False)
+        typer.echo("\n")
+
+
 @app.command(name="train")
 def train_hint() -> None:
     """How to launch training (Hydra owns argv, so it has its own entrypoint)."""

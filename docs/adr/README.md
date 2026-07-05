@@ -11,3 +11,4 @@ silently changing course.
 | [0003](0003-kv-cache-and-decoding.md) | KV-cache is an opt-in path (training unchanged); decoding strategies live in the Generator |
 | [0004](0004-scaling-opt-in.md) | Scaling (LoRA/AMP/accumulation/DDP) is opt-in and default-off; QLoRA/FSDP deferred |
 | [0005](0005-run-records-and-reproducibility.md) | On-disk run records complement MLflow; determinism is best-effort; samples logged each epoch |
+| [0006](0006-serving-and-streaming.md) | Serving is a thin layer over the Generator; streaming is SSE with UTF-8-complete chunks |

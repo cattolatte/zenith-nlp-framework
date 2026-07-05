@@ -41,10 +41,12 @@ ships its own and does not depend on Polaris.
 - **Efficient fine-tuning & scaling** — LoRA adapters (`zenith.peft`), gradient
   accumulation, mixed precision (AMP), and `torchrun`-native distributed (DDP)
   training — all opt-in.
+- **Serving** — a FastAPI service (`POST /generate`, SSE `POST /generate/stream`),
+  a `zenith serve` command, and an interactive `zenith chat` REPL.
 - **Hydra-configured** runs and sweeps; a small `zenith` CLI.
 
-On the roadmap: a streaming generation service, plus QLoRA and FSDP for
-larger-scale training.
+On the roadmap: a learned BPE tokenizer, QLoRA/FSDP for larger-scale training, and
+sweep-result aggregation.
 
 ## Install
 
@@ -82,6 +84,14 @@ Or from the CLI:
 
 ```bash
 zenith generate -m zenith-lm.pt "Once upon a time" --temperature 0.8
+zenith chat -m zenith-lm.pt          # interactive REPL, streams as it generates
+```
+
+Serve it over HTTP (blocking + streaming):
+
+```bash
+zenith serve -m zenith-lm.pt         # POST /generate, POST /generate/stream (SSE)
+curl -s localhost:8000/generate -d '{"prompt":"Once","max_new_tokens":100}'
 ```
 
 ## Architecture
@@ -91,10 +101,14 @@ src/zenith/
 ├── models/          # decoder-only transformer (from scratch)
 ├── tokenizers/      # byte-level tokenizer
 ├── data/            # causal-LM datasets & corpus helpers
-├── generation/      # sampling / decoding
+├── generation/      # sampling / decoding (+ streaming)
 ├── training/        # causal-LM training loop
+├── peft/            # LoRA adapters
+├── distributed/     # DDP helpers
 ├── tracking/        # optional MLflow experiment tracking
-├── cli/             # Hydra train entrypoint + `zenith` CLI
+├── experiments/     # environment capture & on-disk run records
+├── serving/         # FastAPI generation service (+ SSE streaming)
+├── cli/             # Hydra train entrypoint + `zenith` CLI (serve, chat, …)
 └── checkpoint.py    # self-describing save / load
 ```
 
