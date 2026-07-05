@@ -1,14 +1,19 @@
 name: Release
 
 # Publishes to PyPI on a version tag via trusted publishing (OIDC — no API token).
-# One-time setup: add a PyPI "trusted publisher" for this repo + this workflow, and
-# create a GitHub environment named `pypi`.
+#
+# Disabled by default so tags don't fail before publishing is set up. To enable:
+#   1. Create the PyPI project and add a "trusted publisher" for this repo + this
+#      workflow (`release.yml`), and create a GitHub environment named `pypi`.
+#   2. Set repository variable `PUBLISH_TO_PYPI` to `true`
+#      (Settings → Secrets and variables → Actions → Variables).
 on:
   push:
     tags: ["v*"]
 
 jobs:
   publish:
+    if: vars.PUBLISH_TO_PYPI == 'true'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
