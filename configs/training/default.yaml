@@ -4,6 +4,11 @@ learning_rate: 3e-4
 weight_decay: 0.1
 warmup_steps: 100
 grad_clip: 1.0
+# scaling
+grad_accum_steps: 1
+amp: false
+amp_dtype: bf16      # bf16 or fp16 (fp16 loss-scaling applies on CUDA)
+# in-training samples
 sample_prompt: ""
 sample_tokens: 160
 sample_temperature: 0.8

@@ -38,15 +38,27 @@ def _build_tokenizer(spec: dict[str, Any]) -> ByteTokenizer:
 
 
 def save_checkpoint(
-    model: DecoderLM, tokenizer: object | None, path: str | Path, *, extra: dict[str, Any] | None = None
+    model: DecoderLM,
+    tokenizer: object | None,
+    path: str | Path,
+    *,
+    extra: dict[str, Any] | None = None,
+    lora: object | None = None,
 ) -> None:
-    """Write ``model`` (+ tokenizer spec + optional ``extra`` metadata) to ``path``."""
+    """Write ``model`` (+ tokenizer spec + optional ``extra``/``lora``) to ``path``.
+
+    When ``lora`` (a ``LoraConfig``) is given, the model has LoRA layers injected;
+    the config is recorded so :func:`load_checkpoint` can re-inject them before
+    loading the weights.
+    """
     payload: dict[str, Any] = {
         "format": _FORMAT,
         "model_config": asdict(model.config),
         "state_dict": model.state_dict(),
         "tokenizer": _tokenizer_spec(tokenizer),
     }
+    if lora is not None:
+        payload["lora"] = asdict(lora)
     if extra:
         payload["extra"] = extra
     torch.save(payload, str(path))
@@ -60,6 +72,10 @@ def load_checkpoint(
     if payload.get("format") != _FORMAT:
         raise ValueError(f"not a {_FORMAT} checkpoint: {path}")
     model = DecoderLM(DecoderConfig(**payload["model_config"]))
+    if "lora" in payload:  # re-inject adapters so the state-dict keys line up
+        from .peft import LoraConfig, inject_lora
+
+        inject_lora(model, LoraConfig(**payload["lora"]))
     model.load_state_dict(payload["state_dict"])
     tokenizer = _build_tokenizer(payload.get("tokenizer", {"type": "byte"}))
     model.tokenizer = tokenizer  # attach for ergonomic Generator(model) use

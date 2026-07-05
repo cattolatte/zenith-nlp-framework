@@ -4,6 +4,7 @@ defaults:
   - model: decoder
   - training: default
   - data: tiny
+  - peft: none          # `peft=lora` to fine-tune a low-rank adapter
   - tracking: mlflow
 
 seed: 0

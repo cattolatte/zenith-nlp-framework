@@ -6,6 +6,26 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] — Scaling & efficient fine-tuning
+
+Train bigger and cheaper — all opt-in, with the simple path unchanged.
+
+### Added
+- **LoRA** (`zenith.peft`): `LoRALinear`, `inject_lora` (targets `nn.Linear` by
+  name; defaults to attention `qkv`/`proj`), freeze/parameter helpers,
+  `lora_state_dict`, and `find_linear_modules`.
+- **Gradient accumulation** (`grad_accum_steps`) and **mixed precision** (`amp`,
+  `amp_dtype`) in `CausalLMTrainer`.
+- **Distributed data parallel** (`zenith.distributed`): `torchrun`-native helpers,
+  wired into the trainer (sampler + main-process-only logging/checkpointing).
+- LoRA-aware checkpoints: the `LoraConfig` is recorded and re-injected on load, so
+  a LoRA checkpoint round-trips into a `Generator`.
+- `peft` config group (`none`/`lora`) and `training.{grad_accum_steps,amp,amp_dtype}`.
+
+### Notes
+- All new features default off; the v0.2.0 single-device training path is unchanged.
+- QLoRA (4-bit) and FSDP are deferred (GPU-only, not CI-testable). See ADR-0004.
+
 ## [0.2.0] — Decoding strategies & KV-cache
 
 Depth for generation: richer decoding and efficient autoregressive inference.

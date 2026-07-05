@@ -1,0 +1,8 @@
+# LoRA fine-tuning: train a low-rank adapter with the base model frozen.
+# `target_modules` are name substrings; [attention] adapts the qkv + proj linears.
+# Discover names with zenith.peft.find_linear_modules(model).
+use_lora: true
+rank: 8
+alpha: 16
+dropout: 0.05
+target_modules: [attention]
