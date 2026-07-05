@@ -17,6 +17,8 @@ each step (no cache) for clarity.
 
 from __future__ import annotations
 
+from typing import Iterator
+
 import torch
 
 from ..models import DecoderLM, KVCache
@@ -205,3 +207,51 @@ class Generator:
             )
         new_ids = out[0, len(prompt_ids):].tolist()
         return self.tokenizer.decode(new_ids)
+
+    def stream(
+        self,
+        prompt: str = "",
+        *,
+        max_new_tokens: int = 100,
+        temperature: float = 1.0,
+        top_k: int | None = None,
+        top_p: float | None = None,
+        repetition_penalty: float = 1.0,
+    ) -> Iterator[str]:
+        """Yield decoded text incrementally, one UTF-8-complete chunk at a time.
+
+        Bytes are buffered until they form a valid character, so a partial
+        multibyte sequence is never yielded mid-way. Uses the KV-cache fast path.
+        """
+        self.model.eval()
+        device = next(self.model.parameters()).device
+        block_size = self.model.config.block_size
+
+        prompt_ids = self.tokenizer.encode(prompt) or [self.tokenizer.bos_id]
+        idx = torch.tensor([prompt_ids], dtype=torch.long, device=device)
+        cache = KVCache(self.model.config.num_layers)
+
+        with torch.no_grad():
+            logits = self.model(idx[:, -block_size:], cache=cache)[:, -1, :]
+
+        buffer = bytearray()
+        for _ in range(max_new_tokens):
+            next_id = self._select(logits, idx, temperature, top_k, top_p, repetition_penalty)
+            idx = torch.cat([idx, next_id], dim=1)
+
+            token = int(next_id.item())
+            if token < 256:
+                buffer.append(token)
+                try:
+                    yield buffer.decode("utf-8")
+                    buffer.clear()
+                except UnicodeDecodeError:
+                    pass  # wait for the rest of the multibyte character
+
+            if idx.size(1) >= block_size:
+                break
+            with torch.no_grad():
+                logits = self.model(next_id, cache=cache)[:, -1, :]
+
+        if buffer:
+            yield buffer.decode("utf-8", errors="replace")

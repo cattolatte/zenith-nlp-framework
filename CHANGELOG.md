@@ -6,6 +6,22 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] — Serving & product surface
+
+Talk to a trained model.
+
+### Added
+- `zenith.serving`: `create_app(model_path)` (FastAPI) + `serve()` with
+  `GET /health`, `POST /generate` (full decoding controls) and `POST
+  /generate/stream` (Server-Sent Events).
+- `Generator.stream()` — incremental, UTF-8-complete text chunks (KV-cached).
+- CLI: `zenith serve` and an interactive `zenith chat` REPL that streams to the
+  terminal.
+- Packaging: `serving` extra (fastapi/uvicorn/pydantic); `httpx` in `dev`.
+
+### Notes
+- Multi-model serving, metrics, batching and auth are deferred. See ADR-0006.
+
 ## [0.4.0] — Tracking & reproducibility
 
 Legible, reproducible runs.

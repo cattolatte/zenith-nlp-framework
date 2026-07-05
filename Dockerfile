@@ -10,10 +10,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN pip install --no-cache-dir -e ".[cli,tracking]"
+RUN pip install --no-cache-dir -e ".[cli,tracking,serving]"
+
+EXPOSE 8000
 
 # Train on the bundled corpus:
 #   docker run --rm -v "$(pwd)":/app zenith python -m zenith.cli.train
-# Generate from a checkpoint:
-#   docker run --rm -v "$(pwd)":/app zenith zenith generate -m zenith-lm.pt "Once"
+# Serve a checkpoint (POST /generate, /generate/stream):
+#   docker run --rm -p 8000:8000 -v "$(pwd)":/app zenith zenith serve -m zenith-lm.pt
 CMD ["zenith", "info"]
