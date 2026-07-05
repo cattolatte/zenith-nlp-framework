@@ -1,10 +1,9 @@
+# Zenith root Hydra config. Override any value on the CLI; sweep with `-m`.
 defaults:
   - _self_
-  - model: bert
+  - model: decoder
   - training: default
+  - data: tiny
+  - tracking: mlflow
 
-data_path: "${hydra:runtime.cwd}/data/text_dataset_20240717141623.csv"
-sample_size: 1000
-vocab_size: 10000
-max_len: 128
-num_classes: 2
+seed: 0

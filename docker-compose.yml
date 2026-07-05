@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   mlflow_ui:
-    image: python:3.9-slim
-    container_name: mlflow_ui
+    image: python:3.12-slim
+    container_name: zenith_mlflow_ui
     ports:
       - "5000:5000"
     volumes:
