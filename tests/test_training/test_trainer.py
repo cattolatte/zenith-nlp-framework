@@ -1,5 +1,7 @@
 """Tests for the causal-LM trainer — assert it actually learns on a tiny fixture."""
 
+import json
+
 import torch
 
 from zenith.checkpoint import load_pretrained
@@ -65,3 +67,19 @@ def test_lora_training_freezes_base_and_updates_adapter(tmp_path):
     # The LoRA checkpoint round-trips into a working generator.
     generator = load_pretrained(str(save_path))
     assert isinstance(generator.generate("the ", max_new_tokens=10), str)
+
+
+def test_fit_writes_a_run_record(tmp_path):
+    tokenizer, dataset, model = _fixture()
+    run_dir = tmp_path / "runs"
+    config = TrainingConfig(
+        epochs=2, batch_size=16, warmup_steps=2,
+        record_dir=str(run_dir), save_path=str(tmp_path / "lm.pt"),
+    )
+    CausalLMTrainer(model, tokenizer, config).fit(dataset)
+
+    assert (run_dir / "run.json").exists()
+    assert (run_dir / "samples.txt").exists()  # log_samples defaults to True
+    run = json.loads((run_dir / "run.json").read_text())
+    assert len(run["metrics"]["history"]) == 2
+    assert run["environment"]["seed"] == 0

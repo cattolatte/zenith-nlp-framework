@@ -36,7 +36,8 @@ ships its own and does not depend on Polaris.
 - **Text generation** (`Generator`) — greedy, temperature, top-k, nucleus (top-p),
   repetition penalty, and beam search, with a KV-cache for efficient decoding.
 - **Causal-LM training** (`CausalLMTrainer`) — warmup/cosine schedule, gradient
-  clipping, best-checkpoint saving, in-training samples, optional MLflow tracking.
+  clipping, best-checkpoint saving, per-epoch samples, MLflow tracking, on-disk
+  run records, and a deterministic mode.
 - **Efficient fine-tuning & scaling** — LoRA adapters (`zenith.peft`), gradient
   accumulation, mixed precision (AMP), and `torchrun`-native distributed (DDP)
   training — all opt-in.

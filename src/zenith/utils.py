@@ -15,7 +15,7 @@ import random
 
 import torch
 
-__all__ = ["set_seed", "resolve_device", "get_logger"]
+__all__ = ["set_seed", "set_deterministic", "resolve_device", "get_logger"]
 
 
 def set_seed(seed: int) -> None:
@@ -24,6 +24,19 @@ def set_seed(seed: int) -> None:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+def set_deterministic(seed: int) -> None:
+    """Seed RNGs and request deterministic algorithms (best-effort).
+
+    ``warn_only=True`` keeps a training run alive if some op lacks a deterministic
+    implementation, rather than raising — determinism is a goal, not a hard gate.
+    """
+    set_seed(seed)
+    torch.use_deterministic_algorithms(True, warn_only=True)
+    if torch.cuda.is_available():
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
 
 def resolve_device(prefer: str | None = None) -> torch.device:

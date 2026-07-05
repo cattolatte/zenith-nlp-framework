@@ -6,6 +6,26 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] — Tracking & reproducibility
+
+Legible, reproducible runs.
+
+### Added
+- `zenith.experiments`: `capture_environment()` (versions/seed/git commit) and
+  `record_run()` (writes `config`/`metrics`/`samples`/`environment`/`run` files).
+- `utils.set_deterministic()` — seeded, deterministic algorithms (best-effort).
+- `CausalLMTrainer` now logs the full run config, per-epoch generated samples
+  (MLflow artifacts) and the best checkpoint; optionally writes an on-disk run
+  record (`record_dir`); supports a `deterministic` mode and a `run_config`.
+- Config: `training.{log_samples,deterministic,record_dir}`; the CLI passes the
+  resolved Hydra config through for logging/recording.
+
+### Fixed
+- `pyproject` version was left at 0.2.0 during 0.3.0; versions are back in sync.
+
+### Notes
+- Sweep-result aggregation and the MLflow Model Registry are deferred. See ADR-0005.
+
 ## [0.3.0] — Scaling & efficient fine-tuning
 
 Train bigger and cheaper — all opt-in, with the simple path unchanged.
