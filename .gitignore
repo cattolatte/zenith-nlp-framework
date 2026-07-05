@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Hydra / MLflow run outputs
+outputs/
+multirun/
+mlruns/
+
+# Trained model checkpoints
+*.pt
+zenith-lm.pt
+
+# OS junk
+.DS_Store
