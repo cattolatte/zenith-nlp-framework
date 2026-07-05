@@ -1,7 +1,5 @@
 """Tests for the causal-LM trainer — assert it actually learns on a tiny fixture."""
 
-import torch
-
 from zenith.checkpoint import load_pretrained
 from zenith.data import CausalLMDataset, encode_corpus
 from zenith.models import DecoderConfig, DecoderLM
