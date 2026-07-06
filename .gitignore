@@ -31,3 +31,5 @@ zenith-lm.pt
 # Local training outputs
 runs/
 data/tiny_shakespeare.txt
+data/text8_subset.txt
+*.log

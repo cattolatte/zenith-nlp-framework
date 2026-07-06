@@ -14,3 +14,4 @@ silently changing course.
 | [0006](0006-serving-and-streaming.md) | Serving is a thin layer over the Generator; streaming is SSE with UTF-8-complete chunks |
 | [0007](0007-bpe-and-benchmarks.md) | BPE is byte-level (lossless); benchmarks ship methodology, not invented numbers |
 | [0008](0008-polaris-interop.md) | Polaris interop is an optional adapter (`zenith.interop`), not a dependency |
+| [0009](0009-modern-architecture.md) | Llama-style architecture (RMSNorm/RoPE/SwiGLU) is the configurable default, chosen by measured ablation; benchmarks report real numbers |
