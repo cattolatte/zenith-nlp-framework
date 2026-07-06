@@ -6,6 +6,19 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] — Interactive console & docs polish
+
+### Added
+- **`zenith console`** — an interactive REPL (`zenith.console`) in the spirit of the
+  Polaris console: a colored ASCII banner, and a generation-first prompt where you
+  just type text to continue it. Commands: `load`, `set <param> <value>` (temperature
+  / top_k / top_p / repetition_penalty / num_beams / max_new_tokens), `show`,
+  `generate`, `info`, `help`, `exit`. `load` a checkpoint with `-m` on launch.
+
+### Changed
+- README / module docs polished and brought fully up to date (console, evaluation,
+  the nanoGPT-matching benchmark, corrected architecture tree).
+
 ## [0.7.2] — GPT-2 initialization & a nanoGPT-matching result
 
 ### Added

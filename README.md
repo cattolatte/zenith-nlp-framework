@@ -48,9 +48,10 @@ tokenizer and does not depend on Polaris.
   accumulation, mixed precision (AMP), and `torchrun`-native distributed (DDP)
   training — all opt-in.
 - **Evaluation** — held-out `perplexity` / `evaluate`, and a `zenith eval` command.
-- **Serving** — a FastAPI service (`POST /generate`, SSE `POST /generate/stream`),
-  a `zenith serve` command, and an interactive `zenith chat` REPL.
-- **Hydra-configured** runs and sweeps; a small `zenith` CLI.
+- **Serving & CLI** — a FastAPI service (`POST /generate`, SSE
+  `POST /generate/stream`), plus `zenith serve`, a streaming `zenith chat`, and an
+  interactive `zenith console` (a REPL with a banner and tunable decoding).
+- **Hydra-configured** runs and hyperparameter sweeps.
 
 See [BENCHMARKS.md](BENCHMARKS.md) for the evaluation methodology and
 [docs/modules.md](docs/modules.md) for a module overview. On the roadmap:
@@ -99,7 +100,8 @@ Or from the CLI:
 
 ```bash
 zenith generate -m zenith-lm.pt "Once upon a time" --temperature 0.8
-zenith chat -m zenith-lm.pt          # interactive REPL, streams as it generates
+zenith chat -m zenith-lm.pt          # quick streaming REPL
+zenith console -m zenith-lm.pt       # full REPL: load/set/show/generate + banner
 ```
 
 Serve it over HTTP (blocking + streaming):
@@ -114,7 +116,7 @@ curl -s localhost:8000/generate -d '{"prompt":"Once","max_new_tokens":100}'
 ```text
 src/zenith/
 ├── models/          # decoder-only transformer (from scratch)
-├── tokenizers/      # byte-level tokenizer
+├── tokenizers/      # byte-level + from-scratch BPE tokenizers
 ├── data/            # causal-LM datasets & corpus helpers
 ├── generation/      # sampling / decoding (+ streaming)
 ├── training/        # causal-LM training loop
@@ -124,8 +126,9 @@ src/zenith/
 ├── tracking/        # optional MLflow experiment tracking
 ├── experiments/     # environment capture & on-disk run records
 ├── serving/         # FastAPI generation service (+ SSE streaming)
+├── console/         # interactive `zenith console` REPL
 ├── interop/         # optional Polaris tokenizer adapter (sibling bridge)
-├── cli/             # Hydra train entrypoint + `zenith` CLI (serve, chat, …)
+├── cli/             # Hydra train entrypoint + `zenith` CLI (serve, chat, console, …)
 └── checkpoint.py    # self-describing save / load
 ```
 
