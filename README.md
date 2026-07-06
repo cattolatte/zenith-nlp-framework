@@ -23,9 +23,10 @@ PyTorch supplies only autograd, containers and optimizers.
 Zenith is a standalone project. It is also the **generative counterpart** to
 [Polaris](https://github.com/cattolatte/Polaris), a from-scratch engine focused on
 *understanding* text (transformer encoders, classification). Polaris encodes;
-Zenith generates. The two are complementary but independent — Zenith can
-*optionally* reuse Polaris' tokenizers (`pip install zenith-nlp[polaris]`), but it
-ships its own and does not depend on Polaris.
+Zenith generates. The two are complementary but independent — with the optional `[polaris]` extra,
+`zenith.interop.PolarisTokenizer` lets a Zenith decoder generate over a Polaris
+vocabulary (see `examples/encode_and_generate.py`), but Zenith ships its own
+tokenizer and does not depend on Polaris.
 
 ## What's here
 
@@ -117,6 +118,7 @@ src/zenith/
 ├── tracking/        # optional MLflow experiment tracking
 ├── experiments/     # environment capture & on-disk run records
 ├── serving/         # FastAPI generation service (+ SSE streaming)
+├── interop/         # optional Polaris tokenizer adapter (sibling bridge)
 ├── cli/             # Hydra train entrypoint + `zenith` CLI (serve, chat, …)
 └── checkpoint.py    # self-describing save / load
 ```
