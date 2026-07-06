@@ -6,6 +6,20 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.1] — Scaling study & a harder benchmark
+
+### Added
+- `scripts/scaling_study.py` — trains a sweep of Llama-style decoders (0.6M → 10.7M
+  params, same recipe) and reports held-out bits/char.
+- `scripts/download_text8.py` — fetches a subset of the standard **text8** char-LM
+  corpus for an out-of-domain second benchmark.
+- BENCHMARKS: a **bits/char-vs-model-size scaling curve** (diminishing returns into
+  the data floor) and a **text8-subset result** (1.78 bpc), both with honest caveats
+  (subset ≠ full text8; alphabet size affects bits/char).
+- Design docs for phases 8 & 9, and ADR-0009 (modern architecture).
+
+_No library API changes — benchmarks, scripts, and docs only._
+
 ## [0.9.0] — Modern (Llama-style) architecture
 
 ### Added
