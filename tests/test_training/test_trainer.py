@@ -60,9 +60,10 @@ def test_lora_training_freezes_base_and_updates_adapter(tmp_path):
     CausalLMTrainer(model, tokenizer, config).fit(dataset)
 
     # Base weight is frozen; adapter moved away from its zero init.
+    # (compare on CPU — the model may have trained on MPS/CUDA)
     qkv = model.blocks[0].attention.qkv
-    assert torch.allclose(base_before, qkv.base_layer.weight)
-    assert qkv.lora_B.abs().sum() > 0
+    assert torch.allclose(base_before, qkv.base_layer.weight.cpu())
+    assert qkv.lora_B.abs().sum().item() > 0
 
     # The LoRA checkpoint round-trips into a working generator.
     generator = load_pretrained(str(save_path))
