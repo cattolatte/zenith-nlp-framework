@@ -28,6 +28,8 @@ Same recipe, same ~10.7M params, same data — only the architecture differs:
 | GPT-2-style — LayerNorm, learned pos, GELU | 10.8M | 2.11 | epoch 17 |
 | **Llama-style — RMSNorm, RoPE, SwiGLU** | 10.7M | **2.08** | **epoch 10** |
 
+![Architecture ablation: quality is nearly tied (2.11 vs 2.08 bits/char) while the Llama-style model converges about twice as fast (epoch 10 vs 17)](assets/architecture.png)
+
 The modern architecture is **slightly better *and* converges roughly twice as
 fast** (best val at epoch 10 vs 17). The honest caveat: both land near ~2.1 bpc —
 at this scale the floor is set by *data and model size*, not the architecture. The
@@ -46,18 +48,12 @@ Same Llama-style recipe, same data, only width/depth change — one command,
 |  5.06M | 2.077 | −0.060 |
 | 10.73M | 2.066 | −0.011 |
 
-```
-bits/char
- 2.33 ┤ ●
- 2.25 ┤
- 2.17 ┤
- 2.14 ┤        ●
- 2.10 ┤
- 2.08 ┤                ●
- 2.07 ┤                        ●
-      └────┬───────┬───────┬───────┬──
-          0.6M    1.8M    5.1M   10.7M   (log-spaced)
-```
+![Scaling curve: bits per char falls from 2.329 at 0.6M params to 2.066 at 10.7M, flattening into a data floor near 2.07](assets/scaling_curve.png)
+
+The same runs, as validation curves over training — bigger models start and finish
+lower, and all four flatten toward the same floor:
+
+![Convergence curves by model size: validation bits per char versus epoch for the four model sizes, all flattening toward roughly 2.1](assets/convergence.png)
 
 Every ~3× in parameters buys less: **−0.19, then −0.06, then −0.01** bits/char. The
 curve flattens into tiny-shakespeare's **data floor** — at ~1 MB of text a 10M model
@@ -78,6 +74,8 @@ subset**, 6 epochs (`scripts/download_text8.py`):
 | Held-out loss | 1.236 |
 | Perplexity | 3.44 |
 | **Bits/char** | **1.78** |
+
+![text8 training curve: validation bits per char falling from 2.15 to 1.78 over six epochs on the 5 MB text8 subset](assets/text8_curve.png)
 
 Sample (prompt `" the "`, temperature 0.7):
 
