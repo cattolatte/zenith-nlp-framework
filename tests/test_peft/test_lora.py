@@ -52,8 +52,10 @@ def test_inject_targets_attention_projections_by_default():
     inject_lora(model, LoraConfig(rank=4, alpha=8))
     assert isinstance(model.blocks[0].attention.qkv, LoRALinear)
     assert isinstance(model.blocks[0].attention.proj, LoRALinear)
-    # Feed-forward linears are not targeted by default.
-    assert not isinstance(model.blocks[0].feed_forward[0], LoRALinear)
+    # Only attention projections are adapted; feed-forward is left alone.
+    adapted = lora_state_dict(model).keys()
+    assert adapted and all("attention" in key for key in adapted)
+    assert not any("feed_forward" in key for key in adapted)
 
 
 def test_inject_freezes_all_but_lora():

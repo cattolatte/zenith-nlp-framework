@@ -9,7 +9,7 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg?logo=pytorch&logoColor=white)](https://pytorch.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-beta-blue.svg)](#project-status)
-[![tiny-shakespeare](https://img.shields.io/badge/tiny--shakespeare-2.11%20bits%2Fchar-6E56CF.svg)](BENCHMARKS.md)
+[![tiny-shakespeare](https://img.shields.io/badge/tiny--shakespeare-2.08%20bits%2Fchar-6E56CF.svg)](BENCHMARKS.md)
 
 </div>
 
@@ -17,13 +17,14 @@
 
 Zenith is a clean, from-scratch library for **generative NLP**: decoder-only
 transformer language models, causal-LM training, and **text generation** — built
-on PyTorch tensor primitives. The architecture is hand-written (causal
-self-attention, pre-norm blocks, weight-tied embeddings) and readable end to end;
-PyTorch supplies only autograd, containers and optimizers.
+on PyTorch tensor primitives. The architecture is hand-written and modern
+(Llama-style: **RoPE, RMSNorm, SwiGLU**, weight-tied embeddings), readable end to
+end; PyTorch supplies only autograd, containers and optimizers.
 
-> **It works:** a 10.8M from-scratch decoder trained in ~18 min on a MacBook (MPS)
-> reaches **2.11 bits/char** on tiny-shakespeare — matching the well-known
-> [nanoGPT](https://github.com/karpathy/nanoGPT) baseline. See [BENCHMARKS.md](BENCHMARKS.md).
+> **It works:** a 10.7M from-scratch Llama-style decoder trained in ~10 min on a
+> MacBook (MPS) reaches **2.08 bits/char** on tiny-shakespeare — matching the
+> well-known [nanoGPT](https://github.com/karpathy/nanoGPT) baseline. See
+> [BENCHMARKS.md](BENCHMARKS.md).
 
 Zenith is a standalone project. It is also the **generative counterpart** to
 [Polaris](https://github.com/cattolatte/Polaris), a from-scratch engine focused on
@@ -35,8 +36,8 @@ tokenizer and does not depend on Polaris.
 
 ## What's here
 
-- **Decoder-only transformer** (`DecoderLM`) — causal self-attention, pre-norm
-  blocks, tied embeddings, written from scratch.
+- **Decoder-only transformer** (`DecoderLM`) — configurable **Llama-style** (RoPE,
+  RMSNorm, SwiGLU) or GPT-2-style (LayerNorm, learned pos, GELU), from scratch.
 - **Tokenizers** — a dependency-free byte-level tokenizer (`ByteTokenizer`) and a
   from-scratch, trainable byte-level BPE (`BPETokenizer`), both lossless.
 - **Text generation** (`Generator`) — greedy, temperature, top-k, nucleus (top-p),

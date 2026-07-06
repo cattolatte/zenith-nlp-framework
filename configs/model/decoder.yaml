@@ -5,3 +5,7 @@ num_layers: 4
 num_heads: 4
 ff_dim: 1024
 dropout: 0.1
+# Architecture: Llama-style by default. GPT-2-style = {norm: layernorm, positional: learned, ffn: gelu}.
+norm: rmsnorm       # rmsnorm | layernorm
+positional: rope    # rope | learned
+ffn: swiglu         # swiglu | gelu
