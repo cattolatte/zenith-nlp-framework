@@ -6,6 +6,15 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.2] — UX
+
+### Changed
+- `CausalLMDataset` gives an actionable error when a corpus encodes to fewer
+  tokens than `block_size`, pointing at corpus size / `block_size` /
+  `tokenizer.vocab_size` (BPE can over-compress a small corpus).
+- The trainer warns when `amp=true` on a device where autocast is a no-op
+  (e.g. Apple MPS), instead of silently ignoring it.
+
 ## [0.6.1] — Fixes
 
 ### Fixed

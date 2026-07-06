@@ -37,7 +37,10 @@ class CausalLMDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
             raise ValueError(f"token_ids must be 1-D, got shape {tuple(token_ids.shape)}")
         if token_ids.numel() <= block_size:
             raise ValueError(
-                f"need more than block_size+1 tokens ({block_size + 1}), got {token_ids.numel()}"
+                f"corpus has only {token_ids.numel()} tokens after encoding, but block_size "
+                f"is {block_size} (need more than {block_size + 1}). Use a larger corpus, a "
+                f"smaller model.block_size, or — with BPE — a smaller tokenizer.vocab_size "
+                f"(subword merges can compress a small corpus below block_size)."
             )
         self.data = token_ids.long()
         self.block_size = block_size
