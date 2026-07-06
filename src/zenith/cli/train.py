@@ -56,6 +56,9 @@ def main(cfg: DictConfig) -> None:
             num_heads=int(cfg.model.num_heads),
             ff_dim=int(cfg.model.ff_dim),
             dropout=float(cfg.model.dropout),
+            norm=str(cfg.model.get("norm", "rmsnorm")),
+            positional=str(cfg.model.get("positional", "rope")),
+            ffn=str(cfg.model.get("ffn", "swiglu")),
         )
     )
 

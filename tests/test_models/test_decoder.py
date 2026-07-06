@@ -45,6 +45,23 @@ def test_num_parameters_positive():
     assert _tiny().num_parameters() > 0
 
 
+def test_rmsnorm_normalizes_to_unit_rms():
+    from zenith.models import RMSNorm
+
+    norm = RMSNorm(8)
+    out = norm(torch.randn(4, 8) * 5)
+    rms = out.pow(2).mean(-1).sqrt()
+    assert torch.allclose(rms, torch.ones(4), atol=1e-4)
+
+
+def test_gpt2_style_variant_builds_and_runs():
+    """The configurable GPT-2-style recipe (layernorm/learned/gelu) still works."""
+    cfg = DecoderConfig(vocab_size=259, block_size=16, embed_dim=32, num_layers=2, num_heads=2,
+                        ff_dim=64, dropout=0.0, norm="layernorm", positional="learned", ffn="gelu")
+    model = DecoderLM(cfg).eval()
+    assert model(torch.zeros(1, 8, dtype=torch.long)).shape == (1, 8, 259)
+
+
 def test_gpt2_init_scales_residual_projections():
     """Weights init ~N(0,0.02); residual output projections are scaled down."""
     model = DecoderLM(

@@ -1,70 +1,67 @@
 # Benchmarks
 
 Honest, reproducible numbers on a modest, laptop-scale setup (Apple M-series, MPS).
-The headline: **a from-scratch decoder that matches the well-known
-[nanoGPT](https://github.com/karpathy/nanoGPT) baseline on tiny-shakespeare, trained
-in ~18 minutes on a MacBook.**
+The headline: **a from-scratch, Llama-style decoder (RoPE + RMSNorm + SwiGLU) that
+matches the well-known [nanoGPT](https://github.com/karpathy/nanoGPT) baseline on
+tiny-shakespeare, trained in ~10 minutes on a MacBook.**
 
 ## Headline result
 
 | | |
 |---|---|
 | Task | character/byte-level language modelling, tiny-shakespeare (1.1M chars) |
-| Model | decoder-only, 6 layers, 384-dim, 6 heads, **10.8M params**, block 256 |
-| Held-out loss | **1.46** |
-| Perplexity | **4.32** |
-| **Bits/char** | **2.11** |
+| Model | Llama-style (RoPE, RMSNorm, SwiGLU), 6 layers, 384-dim, 6 heads, **10.7M params**, block 256 |
+| Held-out loss | **1.44** |
+| Perplexity | **4.22** |
+| **Bits/char** | **2.08** |
 | Reference (nanoGPT) | ~1.47 loss / ~2.1 bits/char |
 
-**Bits/char** (nats/char ÷ ln 2) is the metric that matters — it's tokenizer- and
-model-independent, and it puts Zenith right on the nanoGPT reference.
+**Bits/char** (nats/char ÷ ln 2) is the metric that matters — tokenizer- and
+model-independent — and it puts Zenith right on the nanoGPT reference.
 
-## What moved the needle (ablation)
+## Architecture ablation (GPT-2-style vs Llama-style)
 
-Getting from "mid" to "matches nanoGPT" was three concrete fixes, not brute force:
+Same recipe, same ~10.7M params, same data — only the architecture differs:
 
-| Configuration | Bits/char |
-| :------------ | --------: |
-| block 256, 15 epochs, default init *(undertrained: LR decayed to 0 too early)* | 2.74 |
-| block 128, converged, LR schedule matched to the run | 2.45 |
-| block 256 + **GPT-2 initialization**, converged | **2.11** |
+| Architecture | Params | Bits/char | Converged at |
+| :----------- | -----: | --------: | :----------- |
+| GPT-2-style — LayerNorm, learned pos, GELU | 10.8M | 2.11 | epoch 17 |
+| **Llama-style — RMSNorm, RoPE, SwiGLU** | 10.7M | **2.08** | **epoch 10** |
 
-The biggest single lever was **initialization**: N(0, 0.02) weights with residual
-projections scaled by `1/sqrt(2·n_layers)`. It dropped the *entire* training curve
-and cut epochs-to-converge roughly in half.
+The modern architecture is **slightly better *and* converges roughly twice as
+fast** (best val at epoch 10 vs 17). The honest caveat: both land near ~2.1 bpc —
+at this scale the floor is set by *data and model size*, not the architecture. The
+architecture buys **convergence speed** (and a little quality); breaking the ~2.1
+ceiling needs a bigger model or more data.
 
-## Training curve (headline run, val loss)
+## What got us here (in order of impact)
 
-```
-epoch  1: 2.463    epoch  8: 1.550    epoch 15: 1.475
-epoch  2: 2.143    epoch  9: 1.522    epoch 17: 1.472  <- best (saved)
-epoch  4: 1.755    epoch 11: 1.494    epoch 20: 1.486
-epoch  6: 1.618    epoch 13: 1.480    epoch 26: 1.547  (overfitting)
-```
+1. **GPT-2 initialization** — N(0, 0.02) weights, residual projections scaled by
+   `1/sqrt(2·n_layers)`. Roughly halved epochs-to-converge; the single biggest lever.
+2. **Modern architecture** — RoPE + RMSNorm + SwiGLU: faster convergence, slightly
+   lower loss, fewer params.
+3. **Training to convergence** with an LR schedule matched to the run (and
+   best-checkpoint saving, since it overfits this tiny corpus after ~10 epochs).
 
-Val bottoms out around epoch 15–17, then rises as the model overfits the small
-corpus; the trainer keeps the best checkpoint automatically.
-
-## Sample (headline model, prompt `KING RICHARD III:`, temperature 0.7)
+## Sample (Llama-style model, prompt `KING RICHARD III:`, temperature 0.7)
 
 ```
 KING RICHARD III:
-So, then he may, and so so much a deed.
-
-DUKE OF AUMERLE:
-How now, my lord! disposition'd in the oracle!
-So stands shall I show the morning tears;
-And then see my descent report and my teeth.
+Brother, and on thee cry the children of your virgins,
+By this the other heart of an intercept,
+That live I see the commons of men cold days:
+But in the house of York and Margaret,
+When I have set thee from my heart to
 ```
 
-Speaker names, dialogue format, grammar, and Shakespearean cadence — learned from
-raw bytes.
+Iambic cadence, real syntax, speaker format, and near-coherent meaning — learned
+from raw bytes in ~10 minutes on a laptop.
 
 ## Tokenizer comparison (bits/char, the fair metric)
 
 | Tokenizer | Vocab | Bits/char | Notes |
 | :-------- | ----: | --------: | :---- |
-| byte      |   259 |  **2.11** | headline (converged) |
+| byte      |   259 |  **2.08** | headline (Llama-style, converged) |
 | bpe       |  1024 |     ~2.65 | undertrained — Zenith's from-scratch BPE tokenizer is `O(merges × corpus)` and slow on 1 MB; vectorized BPE is future work |
 
 ## Reproduce
@@ -74,17 +71,19 @@ python scripts/download_corpus.py
 python -m zenith.cli.train \
     data.corpus_path=data/tiny_shakespeare.txt data.stride=128 \
     model.block_size=256 model.embed_dim=384 model.num_layers=6 \
-    model.num_heads=6 model.ff_dim=1536 model.dropout=0.2 \
-    training.epochs=18 training.batch_size=64 training.learning_rate=1e-3
+    model.num_heads=6 model.ff_dim=1024 model.dropout=0.2 \
+    training.epochs=12 training.batch_size=64 training.learning_rate=1e-3
 zenith eval -m zenith-lm.pt -c data/tiny_shakespeare.txt
-zenith generate -m zenith-lm.pt "KING RICHARD III:" -n 320 -t 0.7
 ```
+
+Switch to the GPT-2-style architecture for comparison with
+`model.norm=layernorm model.positional=learned model.ffn=gelu`.
 
 ## Honest notes
 
-- **2.11 bits/char matches, and marginally beats, the nanoGPT reference** — genuinely
+- **2.08 bits/char matches, and marginally beats, the nanoGPT reference** — genuinely
   good for a from-scratch model at this scale. A bigger model or more data would go
-  lower still (well-tuned char models on larger corpora reach ~1.0–1.5 bpc).
-- The model **overfits after ~17 epochs** on this tiny corpus; best-checkpoint
+  lower (well-tuned char models on larger corpora reach ~1.0–1.5 bpc).
+- The model **overfits after ~10 epochs** on this tiny corpus; best-checkpoint
   saving handles it. Early stopping is a natural future addition.
-- MPS is the bottleneck (~2 steps/s at this size); a CUDA GPU is far faster.
+- MPS is the bottleneck (~2–3 steps/s at this size); a CUDA GPU is far faster.

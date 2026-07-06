@@ -75,7 +75,12 @@ def load_checkpoint(
     payload = torch.load(str(path), map_location=map_location, weights_only=False)
     if payload.get("format") != _FORMAT:
         raise ValueError(f"not a {_FORMAT} checkpoint: {path}")
-    model = DecoderLM(DecoderConfig(**payload["model_config"]))
+    model_config = dict(payload["model_config"])
+    # Pre-v0.9 checkpoints predate configurable architecture — default to GPT-2-style.
+    model_config.setdefault("norm", "layernorm")
+    model_config.setdefault("positional", "learned")
+    model_config.setdefault("ffn", "gelu")
+    model = DecoderLM(DecoderConfig(**model_config))
     if "lora" in payload:  # re-inject adapters so the state-dict keys line up
         from .peft import LoraConfig, inject_lora
 

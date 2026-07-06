@@ -6,6 +6,27 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.0] — Modern (Llama-style) architecture
+
+### Added
+- **Configurable, from-scratch modern architecture** in `DecoderLM` /
+  `DecoderConfig`:
+  - `norm`: `rmsnorm` (default) or `layernorm` — from-scratch RMSNorm.
+  - `positional`: `rope` (default) or `learned` — from-scratch rotary embeddings,
+    correct under the KV-cache (verified by the cache-equivalence test).
+  - `ffn`: `swiglu` (default) or `gelu` — from-scratch SwiGLU.
+  Selectable via `model.{norm,positional,ffn}` in the Hydra config.
+
+### Changed
+- **Default architecture is now Llama-style** (RoPE + RMSNorm + SwiGLU). On
+  tiny-shakespeare it converges ~2× faster than the GPT-2-style recipe and reaches
+  **2.08 bits/char** (vs 2.11) at fewer params — see `BENCHMARKS.md` for the
+  architecture ablation.
+
+### Compatibility
+- Pre-v0.9 (GPT-2-style) checkpoints still load: the loader defaults the new fields
+  to `layernorm`/`learned`/`gelu` when they're absent.
+
 ## [0.8.0] — Interactive console & docs polish
 
 ### Added
