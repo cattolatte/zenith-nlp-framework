@@ -172,6 +172,11 @@ class CausalLMTrainer:
 
             amp_dtype = torch.float16 if cfg.amp_dtype == "fp16" else torch.bfloat16
             use_autocast = cfg.amp and device.type in ("cuda", "cpu")
+            if cfg.amp and not use_autocast:
+                self._log.warning(
+                    "amp=true has no effect on device '%s' — autocast supports only cuda/cpu",
+                    device.type,
+                )
             scaler = _grad_scaler(cfg.amp and device.type == "cuda" and amp_dtype is torch.float16)
 
             main = dist.is_main_process()
