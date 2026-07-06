@@ -6,6 +6,22 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.2] — GPT-2 initialization & a nanoGPT-matching result
+
+### Added
+- **GPT-2-style weight initialization** in `DecoderLM`: N(0, 0.02) weights with
+  residual output projections scaled by `1/sqrt(2 · n_layers)`. This substantially
+  improves convergence (roughly halves epochs-to-converge) and is what lets a
+  10.8M model reach **2.11 bits/char** on tiny-shakespeare — matching the nanoGPT
+  baseline. `BENCHMARKS.md` updated with the headline result, ablation, curve, and
+  sample.
+- `[tool.mypy]` config that ignores missing stubs for optional, un-stubbed extras
+  (`polaris`, `mlflow`, `hydra`, `omegaconf`, `uvicorn`).
+
+### Changed
+- README: refreshed the (stale) project-status section — the generative stack is
+  complete and released — and added the benchmark result.
+
 ## [0.7.1] — Training efficiency, benchmarks & project docs
 
 ### Added

@@ -43,3 +43,15 @@ def test_rejects_sequence_longer_than_block_size():
 
 def test_num_parameters_positive():
     assert _tiny().num_parameters() > 0
+
+
+def test_gpt2_init_scales_residual_projections():
+    """Weights init ~N(0,0.02); residual output projections are scaled down."""
+    model = DecoderLM(
+        DecoderConfig(vocab_size=259, block_size=16, embed_dim=64, num_layers=4,
+                      num_heads=4, ff_dim=128)
+    )
+    qkv_std = model.blocks[0].attention.qkv.weight.std().item()
+    proj_std = model.blocks[0].attention.proj.weight.std().item()
+    assert 0.01 < qkv_std < 0.03  # standard 0.02 init
+    assert proj_std < qkv_std  # residual proj scaled by 1/sqrt(2*n_layers)

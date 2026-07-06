@@ -254,6 +254,21 @@ class DecoderLM(nn.Module):
         self.lm_head = nn.Linear(config.embed_dim, config.vocab_size, bias=False)
         # Weight tying: the input embedding and output projection share weights.
         self.lm_head.weight = self.token_embedding.weight
+        self._init_weights()
+
+    def _init_weights(self) -> None:
+        """GPT-2-style init: N(0, 0.02) weights, and residual output projections
+        scaled by 1/sqrt(2 * num_layers) so the residual stream stays well-behaved
+        with depth. This measurably improves convergence over default init."""
+        for module in self.modules():
+            if isinstance(module, (nn.Linear, nn.Embedding)):
+                nn.init.normal_(module.weight, mean=0.0, std=0.02)
+                if isinstance(module, nn.Linear) and module.bias is not None:
+                    nn.init.zeros_(module.bias)
+        residual_std = 0.02 / math.sqrt(2 * self.config.num_layers)
+        for name, param in self.named_parameters():
+            if name.endswith("attention.proj.weight") or name.endswith("feed_forward.2.weight"):
+                nn.init.normal_(param, mean=0.0, std=residual_std)
 
     def forward(self, input_ids: torch.Tensor, *, cache: KVCache | None = None) -> torch.Tensor:
         """Return next-token logits of shape ``(batch, seq, vocab_size)``.

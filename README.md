@@ -8,7 +8,8 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg?logo=pytorch&logoColor=white)](https://pytorch.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-active%20development-orange.svg)](#project-status)
+[![Status](https://img.shields.io/badge/status-beta-blue.svg)](#project-status)
+[![tiny-shakespeare](https://img.shields.io/badge/tiny--shakespeare-2.11%20bits%2Fchar-6E56CF.svg)](BENCHMARKS.md)
 
 </div>
 
@@ -19,6 +20,10 @@ transformer language models, causal-LM training, and **text generation** — bui
 on PyTorch tensor primitives. The architecture is hand-written (causal
 self-attention, pre-norm blocks, weight-tied embeddings) and readable end to end;
 PyTorch supplies only autograd, containers and optimizers.
+
+> **It works:** a 10.8M from-scratch decoder trained in ~18 min on a MacBook (MPS)
+> reaches **2.11 bits/char** on tiny-shakespeare — matching the well-known
+> [nanoGPT](https://github.com/karpathy/nanoGPT) baseline. See [BENCHMARKS.md](BENCHMARKS.md).
 
 Zenith is a standalone project. It is also the **generative counterpart** to
 [Polaris](https://github.com/cattolatte/Polaris), a from-scratch engine focused on
@@ -113,6 +118,7 @@ src/zenith/
 ├── data/            # causal-LM datasets & corpus helpers
 ├── generation/      # sampling / decoding (+ streaming)
 ├── training/        # causal-LM training loop
+├── evaluation/      # held-out loss & perplexity
 ├── peft/            # LoRA adapters
 ├── distributed/     # DDP helpers
 ├── tracking/        # optional MLflow experiment tracking
@@ -125,11 +131,15 @@ src/zenith/
 
 ## Project status
 
-Zenith is under **active development**, mid-way through a redesign from an early,
-general NLP framework into the focused generative library above. Phase 1 (the
-generative core: model, tokenizer, training, generation) is in place; decoding
-strategies, PEFT, distributed training and serving follow. Interfaces may change
-until the first tagged release.
+The generative stack is **complete and released** (see the
+[releases](https://github.com/cattolatte/zenith-nlp-framework/releases)): model,
+decoding, training, scaling (LoRA / AMP / DDP), tracking, serving, evaluation, a
+from-scratch BPE tokenizer, and optional Polaris interop — all covered by an
+offline test suite and CI (Python 3.10–3.12). It trains real models and matches the
+nanoGPT baseline on tiny-shakespeare (see [BENCHMARKS.md](BENCHMARKS.md)).
+
+Still pre-1.0, so interfaces may change. Deferred (optional) work: QLoRA, FSDP,
+vectorized BPE, sweep-result aggregation.
 
 ## License
 
