@@ -6,6 +6,16 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.2] — Benchmark figures
+
+### Added
+- `scripts/plot_benchmarks.py` — renders the benchmark figures (scaling curve,
+  convergence curves, architecture ablation, text8 curve) into `assets/` from the
+  measured numbers, on a white card so they read in GitHub light and dark themes.
+- Figures embedded in the README (scaling hero) and BENCHMARKS (all four).
+
+_Docs, assets, and tooling only — no library changes._
+
 ## [0.9.1] — Scaling study & a harder benchmark
 
 ### Added

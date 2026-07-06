@@ -58,6 +58,17 @@ See [BENCHMARKS.md](BENCHMARKS.md) for the evaluation methodology and
 [docs/modules.md](docs/modules.md) for a module overview. On the roadmap:
 QLoRA/FSDP for larger-scale training, and sweep-result aggregation.
 
+## Benchmarks
+
+A measured scaling study — same Llama-style recipe, only model size changes.
+Bits/char falls with capacity and flattens into tiny-shakespeare's data floor:
+
+![Scaling on tiny-shakespeare: bits per char versus model size, falling from 2.329 at 0.6M params to 2.066 at 10.7M and flattening into a data floor near 2.07](assets/scaling_curve.png)
+
+Full write-up — architecture ablation, convergence curves, and a harder text8
+benchmark — in [BENCHMARKS.md](BENCHMARKS.md). Figures regenerate from the measured
+numbers via [`scripts/plot_benchmarks.py`](scripts/plot_benchmarks.py).
+
 ## Install
 
 ```bash
