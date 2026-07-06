@@ -6,6 +6,18 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.1] — Training efficiency, benchmarks & project docs
+
+### Added
+- `CausalLMDataset(..., stride=...)` — strided / non-overlapping training windows
+  (default `stride=1` unchanged). `stride=block_size` gives far fewer passes, which
+  makes training on real corpora practical; exposed as `data.stride`.
+- **Real benchmarks** in `BENCHMARKS.md` — tiny-shakespeare, byte-level: 6.66
+  held-out perplexity / 2.74 bits-per-char with a 10.8M model in ~15 min on Apple
+  MPS, with the training curve and a sample.
+- Community health files: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
+  and issue / pull-request templates.
+
 ## [0.7.0] — Polaris interop (sibling showcase)
 
 ### Added

@@ -1,3 +1,5 @@
 # Small bundled corpus for the end-to-end slice. Point at your own text to scale up.
 corpus_path: ${hydra:runtime.cwd}/data/tiny_corpus.txt
 val_fraction: 0.1
+# Window step: 1 = every window (default); block_size = non-overlapping (fast training).
+stride: 1

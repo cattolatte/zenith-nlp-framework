@@ -30,9 +30,13 @@ class CausalLMDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         A 1-D ``long`` tensor of token ids.
     block_size : int
         Context length of each training example.
+    stride : int, default 1
+        Step between consecutive window starts. ``stride=1`` yields every window
+        (best for evaluation); ``stride=block_size`` yields non-overlapping blocks
+        (far fewer, much faster passes — usual for training).
     """
 
-    def __init__(self, token_ids: torch.Tensor, block_size: int) -> None:
+    def __init__(self, token_ids: torch.Tensor, block_size: int, *, stride: int = 1) -> None:
         if token_ids.dim() != 1:
             raise ValueError(f"token_ids must be 1-D, got shape {tuple(token_ids.shape)}")
         if token_ids.numel() <= block_size:
@@ -42,14 +46,18 @@ class CausalLMDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
                 f"smaller model.block_size, or — with BPE — a smaller tokenizer.vocab_size "
                 f"(subword merges can compress a small corpus below block_size)."
             )
+        if stride < 1:
+            raise ValueError(f"stride must be >= 1, got {stride}")
         self.data = token_ids.long()
         self.block_size = block_size
+        self.stride = stride
 
     def __len__(self) -> int:
-        return self.data.numel() - self.block_size
+        return (self.data.numel() - self.block_size - 1) // self.stride + 1
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
-        chunk = self.data[index : index + self.block_size + 1]
+        start = index * self.stride
+        chunk = self.data[start : start + self.block_size + 1]
         return chunk[:-1], chunk[1:]
 
 
