@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zenith-nlp"
-version = "0.7.1"
+version = "0.7.2"
 description = "A from-scratch generative NLP library: decoder-only language models and text generation."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -56,6 +56,15 @@ force-exclude = "src/zenith/_incubating"
 [tool.ruff]
 line-length = 100
 extend-exclude = ["src/zenith/_incubating"]
+
+[tool.mypy]
+python_version = "3.10"
+exclude = ["src/zenith/_incubating"]
+
+# Optional, lazily-imported extras that ship no type stubs — don't fail on them.
+[[tool.mypy.overrides]]
+module = ["polaris.*", "mlflow.*", "hydra.*", "omegaconf.*", "uvicorn.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
