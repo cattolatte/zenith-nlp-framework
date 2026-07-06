@@ -85,6 +85,16 @@ def chat(
         typer.echo("\n")
 
 
+@app.command()
+def console(
+    model: str = typer.Option(None, "--model", "-m", help="Checkpoint to load on start."),
+) -> None:
+    """Launch the interactive Zenith console (a generation REPL with a banner)."""
+    from ..console import run
+
+    run(model)
+
+
 @app.command(name="eval")
 def evaluate_cmd(
     model: str = typer.Option(..., "--model", "-m", help="Path to a checkpoint (.pt)."),
