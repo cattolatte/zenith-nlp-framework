@@ -25,7 +25,10 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          # Prefer the small CPU-only wheel; fall back to PyPI if that mirror is
+          # unreachable (download.pytorch.org has intermittent SSL outages).
+          pip install torch --index-url https://download.pytorch.org/whl/cpu \
+            || pip install torch
           pip install -e ".[dev,tracking,cli,serving]"
 
       - name: Lint
