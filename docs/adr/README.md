@@ -13,3 +13,4 @@ silently changing course.
 | [0005](0005-run-records-and-reproducibility.md) | On-disk run records complement MLflow; determinism is best-effort; samples logged each epoch |
 | [0006](0006-serving-and-streaming.md) | Serving is a thin layer over the Generator; streaming is SSE with UTF-8-complete chunks |
 | [0007](0007-bpe-and-benchmarks.md) | BPE is byte-level (lossless); benchmarks ship methodology, not invented numbers |
+| [0008](0008-polaris-interop.md) | Polaris interop is an optional adapter (`zenith.interop`), not a dependency |

@@ -6,6 +6,18 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] — Polaris interop (sibling showcase)
+
+### Added
+- `zenith.interop.PolarisTokenizer` — adapts a Polaris tokenizer to Zenith's
+  tokenizer interface, so a Zenith decoder can train and generate over a Polaris
+  (encoder-side) vocabulary. `polaris-nlp` stays an optional extra, imported
+  lazily.
+- `examples/encode_and_generate.py` — the sibling demo (Polaris tokenizes, Zenith
+  generates).
+- Interop tests (skipped without the `[polaris]` extra; verified against Polaris
+  1.1.0).
+
 ## [0.6.2] — UX
 
 ### Changed
