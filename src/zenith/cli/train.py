@@ -38,9 +38,13 @@ def main(cfg: DictConfig) -> None:
     train_ids, val_ids = train_val_split(ids, cfg.data.val_fraction)
 
     block_size = int(cfg.model.block_size)
-    train_dataset = CausalLMDataset(train_ids, block_size)
+    stride = int(cfg.data.get("stride", 1))
+    train_dataset = CausalLMDataset(train_ids, block_size, stride=stride)
+    # Evaluate on non-overlapping blocks (standard, fast).
     val_dataset = (
-        CausalLMDataset(val_ids, block_size) if val_ids.numel() > block_size + 1 else None
+        CausalLMDataset(val_ids, block_size, stride=block_size)
+        if val_ids.numel() > block_size + 1
+        else None
     )
 
     model = DecoderLM(

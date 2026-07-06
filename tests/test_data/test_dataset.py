@@ -20,6 +20,19 @@ def test_length_accounts_for_block_size():
     assert len(ds) == 6
 
 
+def test_stride_yields_fewer_spaced_windows():
+    ds = CausalLMDataset(torch.arange(20), block_size=4, stride=4)
+    starts = [ds[i][0][0].item() for i in range(len(ds))]
+    assert starts == [0, 4, 8, 12]  # non-overlapping window starts
+    # default stride=1 is unchanged (backward compatible)
+    assert len(CausalLMDataset(torch.arange(10), block_size=4)) == 6
+
+
+def test_rejects_zero_stride():
+    with pytest.raises(ValueError):
+        CausalLMDataset(torch.arange(10), block_size=4, stride=0)
+
+
 def test_rejects_too_short_sequence():
     with pytest.raises(ValueError):
         CausalLMDataset(torch.arange(3), block_size=4)
