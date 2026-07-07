@@ -159,14 +159,17 @@ src/zenith/
 ## Project status
 
 The generative stack is **complete and released** (see the
-[releases](https://github.com/cattolatte/zenith-nlp-framework/releases)): model,
-decoding, training, scaling (LoRA / AMP / DDP), tracking, serving, evaluation, a
-from-scratch BPE tokenizer, and optional Polaris interop — all covered by an
-offline test suite and CI (Python 3.10–3.12). It trains real models and matches the
-nanoGPT baseline on tiny-shakespeare (see [BENCHMARKS.md](BENCHMARKS.md)).
+[releases](https://github.com/cattolatte/zenith-nlp-framework/releases)): a modern
+Llama-style model (RoPE / RMSNorm / SwiGLU, optional fused SDPA), decoding (sampling,
+beam, and greedy-exact **speculative decoding**), training, scaling (LoRA / AMP /
+DDP) with a measured scaling study, **instruction fine-tuning** (a mini chat model),
+tracking, serving, evaluation, a vectorized from-scratch BPE tokenizer, **int8
+quantized inference**, and optional Polaris interop — all covered by an offline test
+suite and CI (Python 3.10–3.12). It trains real models and matches the nanoGPT
+baseline on tiny-shakespeare (see [BENCHMARKS.md](BENCHMARKS.md)).
 
 Still pre-1.0, so interfaces may change. Deferred (optional) work: QLoRA, FSDP,
-vectorized BPE, sweep-result aggregation.
+sweep-result aggregation, and sampled (non-greedy) speculative decoding.
 
 ## License
 
