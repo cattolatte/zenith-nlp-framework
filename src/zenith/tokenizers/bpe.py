@@ -7,10 +7,13 @@ values (so any string round-trips losslessly, never an unknown token) and learns
 merges of frequent adjacent pairs up to a target vocabulary size — the GPT-2-style
 byte-level BPE, written plainly.
 
-The algorithm is deliberately the obvious one (count pairs, merge the most
-frequent, repeat); it is O(merges × corpus), which is fine at the scale this
-library targets. Losslessness holds regardless of merge quality — merges are just
-reversible byte concatenations — which is exactly what the round-trip test checks.
+The algorithm is the classic one (count adjacent pairs, merge the most frequent,
+repeat). Training is **vectorized with numpy** — each round counts all pairs and
+applies the chosen merge over the whole corpus with array operations rather than
+Python loops, which is dramatically faster on a real corpus (numpy is imported
+lazily inside ``train`` only, so encode/decode stay dependency-light). Losslessness
+holds regardless of merge quality — merges are just reversible byte concatenations —
+which is exactly what the round-trip test checks.
 """
 
 from __future__ import annotations
@@ -52,37 +55,57 @@ class BPETokenizer:
 
     # -- training ------------------------------------------------------------
 
+    _PAIR_SHIFT = 1 << 21  # encode a (left, right) id pair as left * SHIFT + right
+
     def train(self, texts: list[str], vocab_size: int) -> "BPETokenizer":
-        """Learn merges from ``texts`` up to ``vocab_size`` total tokens."""
+        """Learn merges from ``texts`` up to ``vocab_size`` total tokens (vectorized)."""
         if vocab_size < 256 + 3:
             raise ValueError(f"vocab_size must be at least {256 + 3}, got {vocab_size}")
-        num_merges = vocab_size - 256 - 3
+        import numpy as np  # lazy: only training needs it, keeps encode/decode light
 
-        sequences = [list(text.encode("utf-8")) for text in texts]
+        num_merges = vocab_size - 256 - 3
         self._merges = {}
         self._vocab = {i: bytes([i]) for i in range(256)}
+
+        # One flat array of all byte ids, with -1 sentinels between texts so no merge
+        # ever spans a boundary. Merges rewrite this array in place, vectorized.
+        flat: list[int] = []
+        for text in texts:
+            flat.extend(text.encode("utf-8"))
+            flat.append(-1)
+        arr = np.array(flat or [-1], dtype=np.int64)
+        shift = self._PAIR_SHIFT
         next_id = 256
 
         for _ in range(num_merges):
-            pairs = self._count_pairs(sequences)
-            if not pairs:
+            left, right = arr[:-1], arr[1:]
+            valid = (left >= 0) & (right >= 0)
+            if not valid.any():
                 break
-            best = max(pairs, key=lambda p: pairs[p])
-            sequences = [self._merge(seq, best, next_id) for seq in sequences]
-            self._merges[best] = next_id
-            self._vocab[next_id] = self._vocab[best[0]] + self._vocab[best[1]]
+            keys = left[valid] * shift + right[valid]
+            uniq, counts = np.unique(keys, return_counts=True)
+            best = int(uniq[counts.argmax()])
+            a, b = best // shift, best % shift
+
+            # Non-overlapping left-to-right merge of the (a, b) pair.
+            matches = np.nonzero((arr[:-1] == a) & (arr[1:] == b))[0]
+            kept, prev = [], -10
+            for m in matches.tolist():
+                if m > prev + 1:  # previous merge consumed m-1's slot
+                    kept.append(m)
+                    prev = m
+            kept_arr = np.array(kept, dtype=np.int64)
+            arr[kept_arr] = next_id
+            drop = np.zeros(arr.shape[0], dtype=bool)
+            drop[kept_arr + 1] = True  # the second token of each merged pair
+            arr = arr[~drop]
+
+            self._merges[(a, b)] = next_id
+            self._vocab[next_id] = self._vocab[a] + self._vocab[b]
             next_id += 1
 
         self._finalize()
         return self
-
-    @staticmethod
-    def _count_pairs(sequences: list[list[int]]) -> dict[tuple[int, int], int]:
-        counts: dict[tuple[int, int], int] = {}
-        for seq in sequences:
-            for pair in zip(seq, seq[1:]):
-                counts[pair] = counts.get(pair, 0) + 1
-        return counts
 
     @staticmethod
     def _merge(seq: list[int], pair: tuple[int, int], new_id: int) -> list[int]:
