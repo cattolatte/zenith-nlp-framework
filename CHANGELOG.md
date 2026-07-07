@@ -6,6 +6,16 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.12.1] — Vectorized BPE training
+
+### Changed
+- `BPETokenizer.train` is now **vectorized with numpy** — each round counts pairs and
+  applies the chosen merge over the whole corpus with array operations instead of
+  Python loops (~8× faster on 100 KB / 300 merges, and the gap grows with corpus
+  size). numpy is imported lazily inside `train`, so `encode`/`decode` stay
+  dependency-light. Byte-level semantics and losslessness are unchanged; the
+  non-overlapping merge is covered by a repeated-character test.
+
 ## [0.12.0] — Fused SDPA attention (opt-in)
 
 ### Added
