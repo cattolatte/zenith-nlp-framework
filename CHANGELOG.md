@@ -6,6 +6,15 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.13.0] — int8 quantized inference
+
+### Added
+- `zenith.quantize` — `QuantizedLinear` (per-output-channel symmetric int8 weights,
+  dequantized on the fly) and `quantize_int8(model)`, which replaces every linear in
+  a model. **~4× smaller** linear weights; on the 10.7M model, greedy output was
+  unchanged and logits stayed within quantization error.
+- `zenith generate --int8` runs generation from an int8-quantized model.
+
 ## [0.12.1] — Vectorized BPE training
 
 ### Changed

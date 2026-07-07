@@ -25,7 +25,7 @@ from .peft import LoraConfig, inject_lora
 from .tokenizers import BPETokenizer, ByteTokenizer
 from .training import CausalLMTrainer, TrainingConfig
 
-__version__ = "0.12.1"
+__version__ = "0.13.0"
 
 __all__ = [
     "__version__",

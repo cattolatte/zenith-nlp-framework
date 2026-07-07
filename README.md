@@ -55,6 +55,8 @@ tokenizer and does not depend on Polaris.
   fine-tuning with response-only loss masking turns a base model into a mini chat
   model (`zenith chat --instruct`). See the [model card](MODEL_CARD.md).
 - **Evaluation** — held-out `perplexity` / `evaluate`, and a `zenith eval` command.
+- **int8 quantization** (`zenith.quantize`) — weight-only int8 for ~4× smaller
+  inference weights, output within quantization error (`zenith generate --int8`).
 - **Serving & CLI** — a FastAPI service (`POST /generate`, SSE
   `POST /generate/stream`), plus `zenith serve`, a streaming `zenith chat`, and an
   interactive `zenith console` (a REPL with a banner and tunable decoding).

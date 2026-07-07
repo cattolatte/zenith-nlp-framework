@@ -38,11 +38,16 @@ def generate(
     model: str = typer.Option(..., "--model", "-m", help="Path to a checkpoint (.pt)."),
     max_new_tokens: int = typer.Option(200, "--max-new-tokens", "-n"),
     temperature: float = typer.Option(0.8, "--temperature", "-t"),
+    int8: bool = typer.Option(False, "--int8", help="Quantize weights to int8 (smaller memory)."),
 ) -> None:
     """Generate text from a trained checkpoint."""
     from ..checkpoint import load_pretrained
 
     generator = load_pretrained(model)
+    if int8:
+        from ..quantize import quantize_int8
+
+        quantize_int8(generator.model)
     text = generator.generate(prompt, max_new_tokens=max_new_tokens, temperature=temperature)
     typer.echo(prompt + text)
 
