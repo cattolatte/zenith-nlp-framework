@@ -50,6 +50,9 @@ tokenizer and does not depend on Polaris.
 - **Efficient fine-tuning & scaling** — LoRA adapters (`zenith.peft`), gradient
   accumulation, mixed precision (AMP), and `torchrun`-native distributed (DDP)
   training — all opt-in.
+- **Instruction tuning** (`zenith.instruct`) — a chat template + supervised
+  fine-tuning with response-only loss masking turns a base model into a mini chat
+  model (`zenith chat --instruct`). See the [model card](MODEL_CARD.md).
 - **Evaluation** — held-out `perplexity` / `evaluate`, and a `zenith eval` command.
 - **Serving & CLI** — a FastAPI service (`POST /generate`, SSE
   `POST /generate/stream`), plus `zenith serve`, a streaming `zenith chat`, and an
