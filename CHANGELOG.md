@@ -6,6 +6,13 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.13.1] — Demo GIF
+
+### Added
+- `scripts/render_demo_gif.py` — renders a terminal-style GIF of the instruction-
+  tuned model chatting, from **real** greedy output, using Pillow (no external
+  screen-recording tools). The committed `assets/demo.gif` is embedded in the README.
+
 ## [0.13.0] — int8 quantized inference
 
 ### Added

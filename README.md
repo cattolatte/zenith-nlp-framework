@@ -26,6 +26,10 @@ end; PyTorch supplies only autograd, containers and optimizers.
 > well-known [nanoGPT](https://github.com/karpathy/nanoGPT) baseline. See
 > [BENCHMARKS.md](BENCHMARKS.md).
 
+![Zenith chat demo: the instruction-tuned model answering "Who are you?", "Tell me a joke.", and "What is the capital of France?" in a terminal](assets/demo.gif)
+
+<sub>Real output from the instruction-tuned mini chat model (`zenith chat --instruct`). See the [model card](MODEL_CARD.md).</sub>
+
 Zenith is a standalone project. It is also the **generative counterpart** to
 [Polaris](https://github.com/cattolatte/Polaris), a from-scratch engine focused on
 *understanding* text (transformer encoders, classification). Polaris encodes;
