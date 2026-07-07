@@ -6,6 +6,18 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] — First stable release
+
+Zenith is now **stable** and published to PyPI (`pip install zenith-nlp`). From here
+the public API follows [semantic versioning](https://semver.org/): breaking changes
+bump the major version.
+
+### Stable public surface
+`zenith.models` · `zenith.tokenizers` · `zenith.data` · `zenith.generation` ·
+`zenith.instruct` · `zenith.training` · `zenith.peft` · `zenith.quantize` ·
+`zenith.evaluation` · `zenith.serving` · `zenith.checkpoint` · `zenith.interop` ·
+and the `zenith` CLI. (`zenith._incubating` remains explicitly unsupported.)
+
 ### Changed
 - Packaging: declare the `numpy` runtime dependency (used by vectorized BPE
   training — a fresh install no longer relies on torch pulling it in), add project
@@ -13,7 +25,11 @@ All notable changes to Zenith are documented here. The format follows
   so the figures render on the PyPI project page.
 - Docs: refreshed the module overview (`docs/modules.md`) with the `instruct`,
   `quantize`, and `interop` modules and the modern-architecture / speculative-
-  decoding surface.
+  decoding surface; README install now leads with `pip install zenith-nlp`.
+
+The complete feature set (modern Llama-style architecture, decoding incl. speculative,
+scaling study, instruction tuning, int8 quantization, SDPA, vectorized BPE, serving,
+tracking) landed across v0.1.0 – v0.13.1, documented in the entries below.
 
 ## [0.13.1] — Demo GIF
 

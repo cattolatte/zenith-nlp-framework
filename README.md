@@ -8,7 +8,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg?logo=pytorch&logoColor=white)](https://pytorch.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-beta-blue.svg)](#project-status)
+[![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)](#project-status)
 [![tiny-shakespeare](https://img.shields.io/badge/tiny--shakespeare-2.08%20bits%2Fchar-6E56CF.svg)](BENCHMARKS.md)
 
 </div>
@@ -84,10 +84,17 @@ numbers via [`scripts/plot_benchmarks.py`](scripts/plot_benchmarks.py).
 ## Install
 
 ```bash
+pip install "zenith-nlp[all]"     # everything: model, training, CLI, serving, tracking
+pip install zenith-nlp            # core only (model + training + generation)
+```
+
+From source (for development):
+
+```bash
 git clone https://github.com/cattolatte/zenith-nlp-framework.git
 cd zenith-nlp-framework
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[all]"      # torch, hydra, omegaconf, mlflow, typer
+pip install -e ".[dev,all]"
 ```
 
 ## Usage
@@ -168,7 +175,8 @@ quantized inference**, and optional Polaris interop — all covered by an offlin
 suite and CI (Python 3.10–3.12). It trains real models and matches the nanoGPT
 baseline on tiny-shakespeare (see [BENCHMARKS.md](BENCHMARKS.md)).
 
-Still pre-1.0, so interfaces may change. Deferred (optional) work: QLoRA, FSDP,
+**v1.0** — the public API is stable and follows semantic versioning; breaking
+changes will bump the major version. Deferred (optional) work: QLoRA, FSDP,
 sweep-result aggregation, and sampled (non-greedy) speculative decoding.
 
 ## License
