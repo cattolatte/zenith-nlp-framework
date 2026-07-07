@@ -26,7 +26,7 @@ end; PyTorch supplies only autograd, containers and optimizers.
 > well-known [nanoGPT](https://github.com/karpathy/nanoGPT) baseline. See
 > [BENCHMARKS.md](BENCHMARKS.md).
 
-![Zenith chat demo: the instruction-tuned model answering "Who are you?", "Tell me a joke.", and "What is the capital of France?" in a terminal](assets/demo.gif)
+![Zenith chat demo: the instruction-tuned model answering "Who are you?", "Tell me a joke.", and "What is the capital of France?" in a terminal](https://raw.githubusercontent.com/cattolatte/zenith-nlp-framework/main/assets/demo.gif)
 
 <sub>Real output from the instruction-tuned mini chat model (`zenith chat --instruct`). See the [model card](MODEL_CARD.md).</sub>
 
@@ -75,7 +75,7 @@ QLoRA/FSDP for larger-scale training, and sweep-result aggregation.
 A measured scaling study — same Llama-style recipe, only model size changes.
 Bits/char falls with capacity and flattens into tiny-shakespeare's data floor:
 
-![Scaling on tiny-shakespeare: bits per char versus model size, falling from 2.329 at 0.6M params to 2.066 at 10.7M and flattening into a data floor near 2.07](assets/scaling_curve.png)
+![Scaling on tiny-shakespeare: bits per char versus model size, falling from 2.329 at 0.6M params to 2.066 at 10.7M and flattening into a data floor near 2.07](https://raw.githubusercontent.com/cattolatte/zenith-nlp-framework/main/assets/scaling_curve.png)
 
 Full write-up — architecture ablation, convergence curves, and a harder text8
 benchmark — in [BENCHMARKS.md](BENCHMARKS.md). Figures regenerate from the measured

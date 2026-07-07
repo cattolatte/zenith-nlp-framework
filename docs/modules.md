@@ -7,13 +7,16 @@ deps until you use the module that needs them.
 
 | Module | Purpose | Public surface |
 | --- | --- | --- |
-| `zenith.models` | From-scratch decoder-only transformer (causal attention, pre-norm blocks, tied embeddings) + KV-cache. | `DecoderLM`, `DecoderConfig`, `KVCache` |
-| `zenith.tokenizers` | Byte-level tokenizer and a from-scratch byte-level BPE. | `ByteTokenizer`, `BPETokenizer` |
+| `zenith.models` | From-scratch decoder: configurable Llama-style (RoPE, RMSNorm, SwiGLU) or GPT-2-style, optional fused SDPA, tied embeddings + KV-cache (with rollback). | `DecoderLM`, `DecoderConfig`, `KVCache`, `RMSNorm` |
+| `zenith.tokenizers` | Byte-level tokenizer and a from-scratch, vectorized byte-level BPE. | `ByteTokenizer`, `BPETokenizer` |
 | `zenith.data` | Causal-LM dataset (next-token blocks) + corpus helpers. | `CausalLMDataset`, `encode_corpus`, `load_corpus_file`, `train_val_split` |
-| `zenith.generation` | Decoding: greedy, temperature, top-k, nucleus, beam, streaming. | `Generator` |
+| `zenith.generation` | Decoding: greedy, temperature, top-k, nucleus, beam, streaming, and greedy-exact speculative decoding. | `Generator`, `SpeculativeStats` |
+| `zenith.instruct` | Instruction fine-tuning: chat template + response-only loss masking. | `ChatTemplate`, `InstructionDataset`, `load_instructions` |
 | `zenith.training` | Single-loop trainer (warmup/cosine, AMP, grad accumulation, LoRA, DDP). | `CausalLMTrainer`, `TrainingConfig` |
 | `zenith.evaluation` | Held-out loss and perplexity. | `evaluate`, `perplexity` |
 | `zenith.peft` | LoRA adapters injected into `nn.Linear`. | `LoraConfig`, `inject_lora`, `LoRALinear`, … |
+| `zenith.quantize` | Weight-only int8 quantization for smaller inference. | `quantize_int8`, `QuantizedLinear` |
+| `zenith.interop` | Optional Polaris tokenizer adapter (needs the `[polaris]` extra). | `PolarisTokenizer` |
 | `zenith.distributed` | `torchrun`-native DDP helpers (no-ops single-process). | `wrap_model`, `make_sampler`, `is_main_process`, … |
 | `zenith.tracking` | Optional MLflow experiment tracking. | `MlflowTracker`, `get_tracker`, `flatten_config` |
 | `zenith.experiments` | Environment capture + on-disk run records. | `capture_environment`, `record_run` |
