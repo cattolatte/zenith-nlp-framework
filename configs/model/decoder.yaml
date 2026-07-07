@@ -9,3 +9,4 @@ dropout: 0.1
 norm: rmsnorm       # rmsnorm | layernorm
 positional: rope    # rope | learned
 ffn: swiglu         # swiglu | gelu
+attention: eager    # eager (readable) | sdpa (fused, faster, numerically equivalent)

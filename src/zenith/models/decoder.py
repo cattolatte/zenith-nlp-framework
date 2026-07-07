@@ -42,6 +42,10 @@ class DecoderConfig:
         Position encoding: rotary (RoPE) or learned absolute embeddings.
     ffn : {"swiglu", "gelu"}
         Feed-forward network: SwiGLU (Llama-style) or a GELU MLP (GPT-2-style).
+    attention : {"eager", "sdpa"}
+        Attention kernel: the readable from-scratch path ("eager") or PyTorch's fused
+        ``scaled_dot_product_attention`` ("sdpa") — faster and lower-memory, and
+        numerically equivalent (see the SDPA-equivalence test).
     """
 
     vocab_size: int
@@ -54,6 +58,7 @@ class DecoderConfig:
     norm: str = "rmsnorm"
     positional: str = "rope"
     ffn: str = "swiglu"
+    attention: str = "eager"
 
 
 class KVCache:
@@ -173,7 +178,8 @@ class CausalSelfAttention(nn.Module):
     rope_sin: torch.Tensor
 
     def __init__(
-        self, *, embed_dim: int, num_heads: int, block_size: int, dropout: float = 0.0, rope: bool = True
+        self, *, embed_dim: int, num_heads: int, block_size: int, dropout: float = 0.0,
+        rope: bool = True, use_sdpa: bool = False,
     ) -> None:
         super().__init__()
         if embed_dim % num_heads != 0:
@@ -181,6 +187,8 @@ class CausalSelfAttention(nn.Module):
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
         self.rope = rope
+        self.use_sdpa = use_sdpa
+        self.dropout_p = dropout
 
         self.qkv = nn.Linear(embed_dim, 3 * embed_dim)
         self.proj = nn.Linear(embed_dim, embed_dim)
@@ -210,19 +218,36 @@ class CausalSelfAttention(nn.Module):
 
         if cache is not None:
             k, v = cache.update(layer_idx, k, v)
-
         total = k.size(2)
-        scores = (q @ k.transpose(-2, -1)) / math.sqrt(self.head_dim)
-        if cache is None:
-            scores = scores.masked_fill(self.mask[:, :, :seq, :seq] == 0, float("-inf"))
-        else:
-            q_pos = torch.arange(offset, offset + seq, device=x.device).unsqueeze(1)
-            k_pos = torch.arange(total, device=x.device).unsqueeze(0)
-            scores = scores.masked_fill((k_pos > q_pos).view(1, 1, seq, total), float("-inf"))
 
-        weights = self.attn_dropout(torch.softmax(scores, dim=-1))
-        out = (weights @ v).transpose(1, 2).contiguous().view(batch, seq, embed)
+        if self.use_sdpa:
+            out = self._sdpa(q, k, v, seq=seq, total=total, offset=offset, cache=cache)
+        else:
+            scores = (q @ k.transpose(-2, -1)) / math.sqrt(self.head_dim)
+            if cache is None:
+                scores = scores.masked_fill(self.mask[:, :, :seq, :seq] == 0, float("-inf"))
+            else:
+                q_pos = torch.arange(offset, offset + seq, device=x.device).unsqueeze(1)
+                k_pos = torch.arange(total, device=x.device).unsqueeze(0)
+                scores = scores.masked_fill((k_pos > q_pos).view(1, 1, seq, total), float("-inf"))
+            weights = self.attn_dropout(torch.softmax(scores, dim=-1))
+            out = weights @ v
+
+        out = out.transpose(1, 2).contiguous().view(batch, seq, embed)
         return self.proj_dropout(self.proj(out))
+
+    def _sdpa(self, q, k, v, *, seq, total, offset, cache):
+        """PyTorch's fused attention, with the same causal semantics as the eager path."""
+        dropout_p = self.dropout_p if self.training else 0.0
+        if cache is None:  # full parallel forward: standard causal mask
+            return F.scaled_dot_product_attention(q, k, v, is_causal=True, dropout_p=dropout_p)
+        if seq == 1:  # single-step decode: attend to all cached keys
+            return F.scaled_dot_product_attention(q, k, v, dropout_p=dropout_p)
+        # Multi-token step with a cache (e.g. speculative verify): explicit mask.
+        q_pos = torch.arange(offset, offset + seq, device=q.device).unsqueeze(1)
+        k_pos = torch.arange(total, device=q.device).unsqueeze(0)
+        attn_mask = (k_pos <= q_pos).view(1, 1, seq, total)  # True = attend
+        return F.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask, dropout_p=dropout_p)
 
 
 class DecoderBlock(nn.Module):
@@ -234,6 +259,7 @@ class DecoderBlock(nn.Module):
         self.attention = CausalSelfAttention(
             embed_dim=config.embed_dim, num_heads=config.num_heads,
             block_size=config.block_size, dropout=config.dropout, rope=config.positional == "rope",
+            use_sdpa=config.attention == "sdpa",
         )
         self.norm2 = _make_norm(config.norm, config.embed_dim)
         if config.ffn == "swiglu":

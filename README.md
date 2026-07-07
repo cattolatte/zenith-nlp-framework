@@ -37,7 +37,8 @@ tokenizer and does not depend on Polaris.
 ## What's here
 
 - **Decoder-only transformer** (`DecoderLM`) — configurable **Llama-style** (RoPE,
-  RMSNorm, SwiGLU) or GPT-2-style (LayerNorm, learned pos, GELU), from scratch.
+  RMSNorm, SwiGLU) or GPT-2-style (LayerNorm, learned pos, GELU), from scratch, with
+  an optional fused **SDPA** attention path (faster, numerically equivalent).
 - **Tokenizers** — a dependency-free byte-level tokenizer (`ByteTokenizer`) and a
   from-scratch, trainable byte-level BPE (`BPETokenizer`), both lossless.
 - **Text generation** (`Generator`) — greedy, temperature, top-k, nucleus (top-p),
