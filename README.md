@@ -41,7 +41,9 @@ tokenizer and does not depend on Polaris.
 - **Tokenizers** — a dependency-free byte-level tokenizer (`ByteTokenizer`) and a
   from-scratch, trainable byte-level BPE (`BPETokenizer`), both lossless.
 - **Text generation** (`Generator`) — greedy, temperature, top-k, nucleus (top-p),
-  repetition penalty, and beam search, with a KV-cache and streaming.
+  repetition penalty, and beam search, with a KV-cache and streaming; plus
+  **greedy-exact speculative decoding** (a small draft model, output identical to
+  greedy — 3×+ fewer target forward passes, see [BENCHMARKS.md](BENCHMARKS.md)).
 - **Causal-LM training** (`CausalLMTrainer`) — warmup/cosine schedule, gradient
   clipping, best-checkpoint saving, per-epoch samples, MLflow tracking, on-disk
   run records, and a deterministic mode.

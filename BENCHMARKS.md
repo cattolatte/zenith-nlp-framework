@@ -99,6 +99,33 @@ Shakespeare's verse.
 - The value here is a **second, out-of-domain corpus** proving the model isn't
   memorising one tiny book — plus an honest, reproducible recipe.
 
+## Speculative decoding (greedy, exact)
+
+A **0.6M draft** proposes tokens; the **10.7M target** verifies them in one forward
+pass and keeps the longest prefix it agrees with. The output is **byte-for-byte
+identical to greedy** on the target — only the number of target forward passes
+changes. Measured on tiny-shakespeare (prompt `"KING RICHARD III:"`, 200 tokens,
+`scripts/speculative_demo.py`):
+
+| Lookahead | Acceptance | Target forwards (vs 200) | Forwards saved |
+| --------: | ---------: | -----------------------: | -------------: |
+| 2 | 76% | 80 | 2.5× |
+| 4 | 52% | 66 | 3.0× |
+| 6 | 45% | 55 | 3.6× |
+| 8 | 35% | 54 | 3.7× |
+
+Every run is verified identical to greedy. A longer lookahead trades acceptance rate
+(the draft is likelier to be wrong deeper into a guess) for fewer target passes,
+plateauing around **3.7×**.
+
+**The honest part — forwards ≠ wall-clock.** On this setup (10.7M target, 0.6M draft,
+MPS) the same run is only **~1.05–1.08× faster in wall-clock**. Two reasons: the
+target is small, so one forward is cheap relative to per-call overhead; and the
+draft's extra forwards aren't free. Speculative decoding pays off in wall-clock when
+the target is *much* larger than the draft and each target forward dominates runtime.
+The forward-pass reduction is the hardware-independent signal — and it's real (3×+);
+the wall-clock gain at this scale is not yet the story.
+
 ## What got us here (in order of impact)
 
 1. **GPT-2 initialization** — N(0, 0.02) weights, residual projections scaled by
