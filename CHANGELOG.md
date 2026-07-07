@@ -6,6 +6,15 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Packaging: declare the `numpy` runtime dependency (used by vectorized BPE
+  training — a fresh install no longer relies on torch pulling it in), add project
+  URLs (Repository / Changelog / Issues), and use absolute image URLs in the README
+  so the figures render on the PyPI project page.
+- Docs: refreshed the module overview (`docs/modules.md`) with the `instruct`,
+  `quantize`, and `interop` modules and the modern-architecture / speculative-
+  decoding surface.
+
 ## [0.13.1] — Demo GIF
 
 ### Added
