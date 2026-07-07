@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from .generator import Generator
+from .generator import Generator, SpeculativeStats
 
-__all__ = ["Generator"]
+__all__ = ["Generator", "SpeculativeStats"]

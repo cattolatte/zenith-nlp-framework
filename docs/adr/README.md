@@ -15,3 +15,4 @@ silently changing course.
 | [0007](0007-bpe-and-benchmarks.md) | BPE is byte-level (lossless); benchmarks ship methodology, not invented numbers |
 | [0008](0008-polaris-interop.md) | Polaris interop is an optional adapter (`zenith.interop`), not a dependency |
 | [0009](0009-modern-architecture.md) | Llama-style architecture (RMSNorm/RoPE/SwiGLU) is the configurable default, chosen by measured ablation; benchmarks report real numbers |
+| [0010](0010-speculative-decoding.md) | Speculative decoding is greedy-exact (output identical to greedy) with a `KVCache.truncate` rollback; sampled variant deferred |

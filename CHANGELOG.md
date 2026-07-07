@@ -6,6 +6,20 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.0] — Speculative decoding
+
+### Added
+- **Greedy-exact speculative decoding** — `Generator.speculative_generate_ids` and
+  `speculative_generate`: a small draft model proposes tokens, the target verifies
+  them in one forward pass, and the output is **byte-for-byte identical to greedy**
+  decoding on the target. `SpeculativeStats` reports acceptance rate and the
+  target-forward speedup.
+- `KVCache.truncate(length)` — roll the cache back to a committed prefix (discards
+  rejected draft tokens).
+- `scripts/speculative_demo.py` and a real benchmark: a 0.6M draft + 10.7M target
+  cuts target forward passes ~3× at identical output (see BENCHMARKS).
+- Design doc (phase 10) and ADR-0010.
+
 ## [0.9.2] — Benchmark figures
 
 ### Added

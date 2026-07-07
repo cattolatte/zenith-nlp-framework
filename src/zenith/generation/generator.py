@@ -17,6 +17,7 @@ each step (no cache) for clarity.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Iterator
 
 import torch
@@ -24,7 +25,32 @@ import torch
 from ..models import DecoderLM, KVCache
 from ..tokenizers import ByteTokenizer
 
-__all__ = ["Generator"]
+__all__ = ["Generator", "SpeculativeStats"]
+
+
+@dataclass
+class SpeculativeStats:
+    """Diagnostics from a speculative-decoding run.
+
+    ``target_forwards`` is the count that matters: plain greedy decoding needs one
+    target forward per generated token, so ``tokens / target_forwards`` is the
+    speedup factor over greedy (assuming the draft is comparatively free).
+    """
+
+    tokens: int = 0
+    target_forwards: int = 0
+    draft_forwards: int = 0
+    proposed: int = 0
+    accepted: int = 0
+
+    @property
+    def acceptance_rate(self) -> float:
+        return self.accepted / self.proposed if self.proposed else 0.0
+
+    @property
+    def speedup(self) -> float:
+        """Target forwards saved vs greedy: tokens per target forward."""
+        return self.tokens / self.target_forwards if self.target_forwards else 0.0
 
 
 class Generator:
@@ -171,6 +197,112 @@ class Generator:
         normalized = scores / (gen_len**length_penalty)
         best = beams[torch.argmax(normalized)]
         return best[None, :]
+
+    # -- speculative decoding ------------------------------------------------
+
+    @torch.no_grad()
+    def speculative_generate_ids(
+        self,
+        input_ids: torch.Tensor,
+        draft_model: DecoderLM,
+        *,
+        max_new_tokens: int = 100,
+        lookahead: int = 4,
+    ) -> tuple[torch.Tensor, SpeculativeStats]:
+        """Greedy speculative decoding — provably identical output to greedy.
+
+        A small ``draft_model`` proposes ``lookahead`` tokens each round; the target
+        (``self.model``) verifies them in a single forward pass and accepts the
+        longest prefix its own argmax agrees with, plus one correction/bonus token.
+        The result is byte-for-byte the same as :meth:`generate_ids` with
+        ``temperature=0`` on the target, but with fewer target forward passes.
+
+        Both models must share a vocabulary and context length. Operates on a single
+        sequence (batch size 1). Returns ``(ids, stats)``.
+        """
+        if input_ids.size(0) != 1:
+            raise ValueError("speculative decoding operates on a single sequence (batch size 1)")
+        if lookahead < 1:
+            raise ValueError("lookahead must be >= 1")
+        target = self.model
+        target.eval()
+        draft_model.eval()
+        device = next(target.parameters()).device
+        block_size = target.config.block_size
+        idx = input_ids.to(device)
+
+        t_cache = KVCache(target.config.num_layers)
+        d_cache = KVCache(draft_model.config.num_layers)
+        if idx.size(1) > 1:  # prime both caches on all but the current token
+            target(idx[:, :-1], cache=t_cache)
+            draft_model(idx[:, :-1], cache=d_cache)
+        last = idx[:, -1:]  # current token; not yet in either cache
+
+        stats = SpeculativeStats()
+        new_tokens: list[int] = []
+        while len(new_tokens) < max_new_tokens:
+            base = t_cache.length  # positions committed before `last`
+            # Room for k drafts + the correction, keeping the final position < block_size.
+            room = block_size - base - 2
+            k = min(lookahead, room, max_new_tokens - len(new_tokens))
+            if k < 1:
+                break
+
+            # Draft proposes k tokens greedily, extending its own cache.
+            draft_tokens: list[torch.Tensor] = []
+            cur = last
+            for _ in range(k):
+                d_logits = draft_model(cur, cache=d_cache)[:, -1, :]
+                stats.draft_forwards += 1
+                cur = torch.argmax(d_logits, dim=-1, keepdim=True)
+                draft_tokens.append(cur)
+
+            # Target verifies [last, t_1..t_k] in one pass; argmax at each position.
+            verify_in = torch.cat([last, *draft_tokens], dim=1)
+            t_logits = target(verify_in, cache=t_cache)
+            stats.target_forwards += 1
+            target_arg = torch.argmax(t_logits[0], dim=-1)  # (k+1,)
+
+            m = 0
+            while m < k and int(draft_tokens[m].item()) == int(target_arg[m].item()):
+                m += 1
+            correction = target_arg[m].view(1, 1)  # first divergence, or bonus if m == k
+            stats.proposed += k
+            stats.accepted += m
+
+            for i in range(m):
+                new_tokens.append(int(draft_tokens[i].item()))
+            new_tokens.append(int(correction.item()))
+
+            # Roll both caches back to the committed prefix [.., last, t_1..t_m].
+            t_cache.truncate(base + 1 + m)
+            if m == k:  # draft never fed t_k to itself; sync it before truncating
+                draft_model(draft_tokens[k - 1], cache=d_cache)
+                stats.draft_forwards += 1
+            else:
+                d_cache.truncate(base + 1 + m)
+            last = correction
+
+        new_tokens = new_tokens[:max_new_tokens]  # a final round may overshoot by the correction
+        stats.tokens = len(new_tokens)
+        out = torch.cat([idx, torch.tensor([new_tokens], dtype=torch.long, device=device)], dim=1)
+        return out, stats
+
+    def speculative_generate(
+        self,
+        prompt: str,
+        draft_model: DecoderLM,
+        *,
+        max_new_tokens: int = 100,
+        lookahead: int = 4,
+    ) -> tuple[str, SpeculativeStats]:
+        """Text wrapper around :meth:`speculative_generate_ids`."""
+        prompt_ids = self.tokenizer.encode(prompt) or [self.tokenizer.bos_id]
+        input_ids = torch.tensor([prompt_ids], dtype=torch.long)
+        out, stats = self.speculative_generate_ids(
+            input_ids, draft_model, max_new_tokens=max_new_tokens, lookahead=lookahead
+        )
+        return self.tokenizer.decode(out[0, len(prompt_ids):].tolist()), stats
 
     # -- text convenience ----------------------------------------------------
 

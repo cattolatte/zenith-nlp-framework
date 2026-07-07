@@ -75,6 +75,19 @@ class KVCache:
             self._v[layer_idx] = torch.cat([past_v, v], dim=2)
         return self._k[layer_idx], self._v[layer_idx]
 
+    def truncate(self, length: int) -> None:
+        """Drop cached positions beyond ``length`` (roll back rejected drafts).
+
+        Speculative decoding verifies several draft tokens in one pass but may
+        accept only a prefix; the rejected positions must be removed so the cache
+        again reflects exactly the committed sequence.
+        """
+        for layer_idx, (k, v) in enumerate(zip(self._k, self._v)):
+            if k is not None:
+                self._k[layer_idx] = k[:, :, :length, :]
+                self._v[layer_idx] = v[:, :, :length, :]
+        self.length = min(self.length, length)
+
 
 class LayerNorm(nn.Module):
     """Layer normalization over the last dimension, from scratch."""
