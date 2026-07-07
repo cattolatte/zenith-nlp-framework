@@ -80,6 +80,7 @@ def load_checkpoint(
     model_config.setdefault("norm", "layernorm")
     model_config.setdefault("positional", "learned")
     model_config.setdefault("ffn", "gelu")
+    model_config.setdefault("attention", "eager")
     model = DecoderLM(DecoderConfig(**model_config))
     if "lora" in payload:  # re-inject adapters so the state-dict keys line up
         from .peft import LoraConfig, inject_lora

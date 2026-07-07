@@ -59,6 +59,7 @@ def main(cfg: DictConfig) -> None:
             norm=str(cfg.model.get("norm", "rmsnorm")),
             positional=str(cfg.model.get("positional", "rope")),
             ffn=str(cfg.model.get("ffn", "swiglu")),
+            attention=str(cfg.model.get("attention", "eager")),
         )
     )
 

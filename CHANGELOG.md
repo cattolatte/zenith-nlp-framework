@@ -6,6 +6,16 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.12.0] — Fused SDPA attention (opt-in)
+
+### Added
+- `DecoderConfig.attention` — `"eager"` (default, the readable from-scratch path) or
+  `"sdpa"` (PyTorch's fused `scaled_dot_product_attention`). SDPA is faster and
+  lower-memory, and **numerically equivalent** — verified for the parallel forward,
+  single-step KV-cache, multi-token cache (speculative verify), and full generation.
+  ~1.28× faster forward on the 10.7M model (MPS). Pre-existing checkpoints load as
+  `"eager"`.
+
 ## [0.11.0] — Instruction fine-tuning (mini chat)
 
 ### Added
