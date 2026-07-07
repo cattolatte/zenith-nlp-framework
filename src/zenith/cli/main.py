@@ -65,11 +65,21 @@ def chat(
     max_new_tokens: int = typer.Option(200, "--max-new-tokens", "-n"),
     temperature: float = typer.Option(0.8, "--temperature", "-t"),
     top_p: float = typer.Option(0.9, "--top-p"),
+    instruct: bool = typer.Option(
+        False, "--instruct", help="Wrap input in the instruction template (fine-tuned models)."
+    ),
 ) -> None:
-    """Interactive REPL: type a prompt, watch the model stream a continuation."""
+    """Interactive REPL: type a prompt, watch the model stream a continuation.
+
+    Use ``--instruct`` for an instruction-tuned checkpoint: input is wrapped in the
+    chat template and generation stops at the end-of-response (EOS) token.
+    """
     from ..checkpoint import load_pretrained
+    from ..instruct import ChatTemplate
 
     generator = load_pretrained(model)
+    template = ChatTemplate() if instruct else None
+    stop_ids = [generator.tokenizer.eos_id] if instruct else None
     typer.echo("Zenith chat — Ctrl-C or empty line to exit.\n")
     while True:
         try:
@@ -78,8 +88,10 @@ def chat(
             break
         if not prompt.strip():
             break
+        text = template.format_prompt(prompt) if template else prompt
         for chunk in generator.stream(
-            prompt, max_new_tokens=max_new_tokens, temperature=temperature, top_p=top_p
+            text, max_new_tokens=max_new_tokens, temperature=temperature,
+            top_p=top_p, stop_ids=stop_ids,
         ):
             typer.echo(chunk, nl=False)
         typer.echo("\n")

@@ -18,7 +18,7 @@ each step (no cache) for clarity.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterator
+from typing import Iterable, Iterator
 
 import torch
 
@@ -82,22 +82,28 @@ class Generator:
         top_p: float | None = None,
         repetition_penalty: float = 1.0,
         use_cache: bool = True,
+        stop_ids: Iterable[int] | None = None,
     ) -> torch.Tensor:
         """Extend ``input_ids`` (shape ``(batch, seq)``) by sampling.
 
         ``temperature <= 0`` selects greedy decoding. ``use_cache`` toggles the
         KV-cache fast path (numerically equivalent to the uncached path).
+        ``stop_ids`` halts a single-sequence run before a stop token is appended
+        (e.g. EOS for instruction chat).
         """
         self.model.eval()
         device = next(self.model.parameters()).device
         block_size = self.model.config.block_size
         idx = input_ids.to(device)
+        stop = set(stop_ids) if stop_ids is not None else None
 
         if use_cache:
             cache: KVCache | None = KVCache(self.model.config.num_layers)
             logits = self.model(idx[:, -block_size:], cache=cache)[:, -1, :]
             for _ in range(max_new_tokens):
                 next_id = self._select(logits, idx, temperature, top_k, top_p, repetition_penalty)
+                if stop is not None and int(next_id[0, 0]) in stop:
+                    break
                 idx = torch.cat([idx, next_id], dim=1)
                 if idx.size(1) >= block_size:
                     break  # context window is full; cannot condition on more
@@ -106,6 +112,8 @@ class Generator:
             for _ in range(max_new_tokens):
                 logits = self.model(idx[:, -block_size:])[:, -1, :]
                 next_id = self._select(logits, idx, temperature, top_k, top_p, repetition_penalty)
+                if stop is not None and int(next_id[0, 0]) in stop:
+                    break
                 idx = torch.cat([idx, next_id], dim=1)
         return idx
 
@@ -349,15 +357,18 @@ class Generator:
         top_k: int | None = None,
         top_p: float | None = None,
         repetition_penalty: float = 1.0,
+        stop_ids: Iterable[int] | None = None,
     ) -> Iterator[str]:
         """Yield decoded text incrementally, one UTF-8-complete chunk at a time.
 
         Bytes are buffered until they form a valid character, so a partial
         multibyte sequence is never yielded mid-way. Uses the KV-cache fast path.
+        ``stop_ids`` ends the stream when a stop token (e.g. EOS) is produced.
         """
         self.model.eval()
         device = next(self.model.parameters()).device
         block_size = self.model.config.block_size
+        stop = set(stop_ids) if stop_ids is not None else None
 
         prompt_ids = self.tokenizer.encode(prompt) or [self.tokenizer.bos_id]
         idx = torch.tensor([prompt_ids], dtype=torch.long, device=device)
@@ -369,6 +380,8 @@ class Generator:
         buffer = bytearray()
         for _ in range(max_new_tokens):
             next_id = self._select(logits, idx, temperature, top_k, top_p, repetition_penalty)
+            if stop is not None and int(next_id[0, 0]) in stop:
+                break
             idx = torch.cat([idx, next_id], dim=1)
 
             buffer.extend(self.tokenizer.token_bytes(int(next_id.item())))

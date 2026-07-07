@@ -6,6 +6,20 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.0] — Instruction fine-tuning (mini chat)
+
+### Added
+- **`zenith.instruct`** — `ChatTemplate`, `InstructionDataset` (response-only loss
+  masking via the `-100` convention, so the existing trainer does masked SFT
+  unchanged), and `load_instructions`.
+- `data/instructions.jsonl` — a small curated single-turn instruction set.
+- `scripts/finetune_instruct.py` — supervised fine-tune a base checkpoint into a mini
+  chat model.
+- **`zenith chat --instruct`** — wraps input in the chat template and stops at EOS,
+  enabled by a new `stop_ids` argument on `Generator.generate_ids` / `stream`.
+- `MODEL_CARD.md` documenting the instruction-tuned model and its honest limits.
+- Design doc (phase 11) and ADR-0011.
+
 ## [0.10.0] — Speculative decoding
 
 ### Added

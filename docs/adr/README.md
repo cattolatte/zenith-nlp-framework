@@ -16,3 +16,4 @@ silently changing course.
 | [0008](0008-polaris-interop.md) | Polaris interop is an optional adapter (`zenith.interop`), not a dependency |
 | [0009](0009-modern-architecture.md) | Llama-style architecture (RMSNorm/RoPE/SwiGLU) is the configurable default, chosen by measured ablation; benchmarks report real numbers |
 | [0010](0010-speculative-decoding.md) | Speculative decoding is greedy-exact (output identical to greedy) with a `KVCache.truncate` rollback; sampled variant deferred |
+| [0011](0011-instruction-tuning.md) | Instruction tuning is single-turn SFT with response-only `-100` loss masking and one shared chat template; reuses the trainer unchanged |
