@@ -6,6 +6,35 @@ All notable changes to Zenith are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] — Grounded generation hooks
+
+Additive, generator-side capabilities for grounded/cited answers. Every existing
+public signature is unchanged; new behaviour is opt-in.
+
+### Added
+- **Constrained decoding** (`zenith.generation.constraints`): a `LogitsConstraint`
+  protocol and an optional `logits_constraint=None` parameter on
+  `Generator.generate_ids` and `Generator.stream`, applied to the next-token logits
+  before sampling — default `None` reproduces unconstrained decoding bit-for-bit.
+  `AllowedTokens` masks the next token to a caller-supplied id set at trigger
+  positions (the general mechanism behind citation-constrained decoding; Zenith
+  encodes no policy).
+- **`<abstain>` special token**: `ByteTokenizer` and `BPETokenizer` reserve a stable
+  `abstain_id`, appended after `bos`/`eos`/`pad` so no content id is renumbered.
+  `Generator.abstained(ids)` detects a refusal without decoding; the id also works as
+  a `stop_ids` entry.
+- **Grounded SFT** (`zenith.instruct.grounded`): `GroundedTemplate` formats
+  `(question, passages)` prompts and `GroundedInstructionDataset` builds
+  `(prompt → cited answer | <abstain>)` examples, reusing the response-only masking
+  from `InstructionDataset` (extracted as `zenith.instruct.mask_prompt`).
+- A PEP 561 `py.typed` marker, so downstream code type-checks against Zenith's types.
+
+### Changed
+- `zenith.peft.inject_lora` is now generic in the model type: `inject_lora(decoder,
+  cfg)` returns a `DecoderLM` (backward-compatible refinement of the return type).
+- Tooling: `mypy --strict` skips numpy's bundled stubs (a numpy/mypy version issue
+  that otherwise aborted the check).
+
 ## [1.0.0] — First stable release
 
 Zenith is now **stable** and published to PyPI (`pip install zenith-nlp`). From here
