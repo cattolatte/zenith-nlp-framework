@@ -24,6 +24,7 @@ import torch
 
 from ..models import DecoderLM, KVCache
 from ..tokenizers import ByteTokenizer
+from .constraints import LogitsConstraint
 
 __all__ = ["Generator", "SpeculativeStats"]
 
@@ -83,13 +84,16 @@ class Generator:
         repetition_penalty: float = 1.0,
         use_cache: bool = True,
         stop_ids: Iterable[int] | None = None,
+        logits_constraint: LogitsConstraint | None = None,
     ) -> torch.Tensor:
         """Extend ``input_ids`` (shape ``(batch, seq)``) by sampling.
 
         ``temperature <= 0`` selects greedy decoding. ``use_cache`` toggles the
         KV-cache fast path (numerically equivalent to the uncached path).
         ``stop_ids`` halts a single-sequence run before a stop token is appended
-        (e.g. EOS for instruction chat).
+        (e.g. EOS for instruction chat). ``logits_constraint``, if given, reshapes
+        the next-token logits at each step before sampling (default ``None`` ⇒
+        identical to unconstrained decoding).
         """
         self.model.eval()
         device = next(self.model.parameters()).device
@@ -100,7 +104,9 @@ class Generator:
         if use_cache:
             cache: KVCache | None = KVCache(self.model.config.num_layers)
             logits = self.model(idx[:, -block_size:], cache=cache)[:, -1, :]
-            for _ in range(max_new_tokens):
+            for step in range(max_new_tokens):
+                if logits_constraint is not None:
+                    logits = logits_constraint(step, idx, logits)
                 next_id = self._select(logits, idx, temperature, top_k, top_p, repetition_penalty)
                 if stop is not None and int(next_id[0, 0]) in stop:
                     break
@@ -109,8 +115,10 @@ class Generator:
                     break  # context window is full; cannot condition on more
                 logits = self.model(next_id, cache=cache)[:, -1, :]
         else:
-            for _ in range(max_new_tokens):
+            for step in range(max_new_tokens):
                 logits = self.model(idx[:, -block_size:])[:, -1, :]
+                if logits_constraint is not None:
+                    logits = logits_constraint(step, idx, logits)
                 next_id = self._select(logits, idx, temperature, top_k, top_p, repetition_penalty)
                 if stop is not None and int(next_id[0, 0]) in stop:
                     break
@@ -358,12 +366,15 @@ class Generator:
         top_p: float | None = None,
         repetition_penalty: float = 1.0,
         stop_ids: Iterable[int] | None = None,
+        logits_constraint: LogitsConstraint | None = None,
     ) -> Iterator[str]:
         """Yield decoded text incrementally, one UTF-8-complete chunk at a time.
 
         Bytes are buffered until they form a valid character, so a partial
         multibyte sequence is never yielded mid-way. Uses the KV-cache fast path.
         ``stop_ids`` ends the stream when a stop token (e.g. EOS) is produced.
+        ``logits_constraint``, if given, reshapes the next-token logits at each step
+        before sampling (default ``None`` ⇒ identical to unconstrained streaming).
         """
         self.model.eval()
         device = next(self.model.parameters()).device
@@ -378,7 +389,9 @@ class Generator:
             logits = self.model(idx[:, -block_size:], cache=cache)[:, -1, :]
 
         buffer = bytearray()
-        for _ in range(max_new_tokens):
+        for step in range(max_new_tokens):
+            if logits_constraint is not None:
+                logits = logits_constraint(step, idx, logits)
             next_id = self._select(logits, idx, temperature, top_k, top_p, repetition_penalty)
             if stop is not None and int(next_id[0, 0]) in stop:
                 break
