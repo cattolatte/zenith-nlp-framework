@@ -23,7 +23,7 @@ def test_training_learns_merges_and_grows_vocab():
 
 def test_untrained_is_pure_bytes():
     tok = BPETokenizer()
-    assert tok.vocab_size == 256 + 3
+    assert tok.vocab_size == 256 + 4
     assert tok.encode("hi") == [ord("h"), ord("i")]
 
 
@@ -65,14 +65,14 @@ def test_bpe_checkpoint_roundtrips(tmp_path):
 
 def test_overlapping_repeats_merge_and_roundtrip():
     """Repeated characters stress the non-overlapping vectorized merge (aa in aaaa)."""
-    tok = BPETokenizer().train(["a" * 200 + " " + "ababab" * 30], vocab_size=256 + 3 + 40)
+    tok = BPETokenizer().train(["a" * 200 + " " + "ababab" * 30], vocab_size=256 + 4 + 40)
     for text in ["aaaaaaa", "aaaa", "ababab", "a", "aaa bbb"]:
         assert tok.decode(tok.encode(text)) == text
 
 
 def test_multitext_corpus_is_lossless_and_compresses():
     corpus = ["the quick brown fox " * 40, "hello world hello world " * 40, "日本語 " * 30]
-    tok = BPETokenizer().train(corpus, vocab_size=256 + 3 + 200)
+    tok = BPETokenizer().train(corpus, vocab_size=256 + 4 + 200)
     sample = "the quick brown fox jumps"
     assert tok.decode(tok.encode(sample)) == sample
     assert len(tok.encode(sample)) < len(sample.encode("utf-8"))  # merges shortened it

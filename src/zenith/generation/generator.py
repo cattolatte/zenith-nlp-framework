@@ -70,6 +70,16 @@ class Generator:
         self.model = model
         self.tokenizer = tokenizer or getattr(model, "tokenizer", None) or ByteTokenizer()
 
+    def abstained(self, ids: torch.Tensor) -> bool:
+        """True if ``ids`` contains the tokenizer's abstain token.
+
+        Lets callers detect a refusal ("cannot answer from the given context")
+        without decoding to text or string-matching. Returns ``False`` for
+        tokenizers that reserve no abstain id.
+        """
+        abstain_id = getattr(self.tokenizer, "abstain_id", None)
+        return abstain_id is not None and bool((ids == abstain_id).any())
+
     # -- sampling ------------------------------------------------------------
 
     @torch.no_grad()

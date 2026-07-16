@@ -49,9 +49,10 @@ class BPETokenizer:
         self.bos_id = base
         self.eos_id = base + 1
         self.pad_id = base + 2
-        for special in (self.bos_id, self.eos_id, self.pad_id):
+        self.abstain_id = base + 3  # refusal — "cannot answer from the given context"
+        for special in (self.bos_id, self.eos_id, self.pad_id, self.abstain_id):
             self._vocab[special] = b""
-        self.vocab_size = base + 3
+        self.vocab_size = base + 4
 
     # -- training ------------------------------------------------------------
 
@@ -59,11 +60,11 @@ class BPETokenizer:
 
     def train(self, texts: list[str], vocab_size: int) -> "BPETokenizer":
         """Learn merges from ``texts`` up to ``vocab_size`` total tokens (vectorized)."""
-        if vocab_size < 256 + 3:
-            raise ValueError(f"vocab_size must be at least {256 + 3}, got {vocab_size}")
+        if vocab_size < 256 + 4:
+            raise ValueError(f"vocab_size must be at least {256 + 4}, got {vocab_size}")
         import numpy as np  # lazy: only training needs it, keeps encode/decode light
 
-        num_merges = vocab_size - 256 - 3
+        num_merges = vocab_size - 256 - 4
         self._merges = {}
         self._vocab = {i: bytes([i]) for i in range(256)}
 

@@ -17,10 +17,12 @@ from __future__ import annotations
 
 __all__ = ["ByteTokenizer"]
 
-# Reserved ids sit above the 256 byte values.
+# Reserved ids sit above the 256 byte values, appended in a fixed order so adding
+# one never renumbers the byte (content) ids or the earlier specials.
 _BOS = 256  # beginning of sequence
 _EOS = 257  # end of sequence
 _PAD = 258  # padding
+_ABSTAIN = 259  # refusal — "cannot answer from the given context"
 
 
 class ByteTokenizer:
@@ -37,15 +39,16 @@ class ByteTokenizer:
     >>> tok.decode(tok.encode("hi"))
     'hi'
     >>> tok.vocab_size
-    259
+    260
     """
 
     bos_id = _BOS
     eos_id = _EOS
     pad_id = _PAD
+    abstain_id = _ABSTAIN
 
     def __init__(self) -> None:
-        self.vocab_size = 259
+        self.vocab_size = 260
 
     def encode(self, text: str, *, add_bos: bool = False, add_eos: bool = False) -> list[int]:
         """Encode ``text`` into a list of byte ids, optionally BOS/EOS-wrapped."""

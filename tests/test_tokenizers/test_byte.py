@@ -15,7 +15,7 @@ def test_roundtrip_is_lossless_for_unicode():
 
 
 def test_vocab_size_is_bytes_plus_specials():
-    assert ByteTokenizer().vocab_size == 259
+    assert ByteTokenizer().vocab_size == 260  # 256 bytes + bos/eos/pad/abstain
 
 
 def test_bos_eos_wrapping():
