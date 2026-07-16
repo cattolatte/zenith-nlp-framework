@@ -18,9 +18,12 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import TypeVar
 
 import torch
 from torch import nn
+
+_ModelT = TypeVar("_ModelT", bound=nn.Module)
 
 __all__ = [
     "LoraConfig",
@@ -103,10 +106,12 @@ def _parent_of(model: nn.Module, dotted: str) -> tuple[nn.Module, str]:
     return parent, child
 
 
-def inject_lora(model: nn.Module, config: LoraConfig) -> nn.Module:
+def inject_lora(model: _ModelT, config: LoraConfig) -> _ModelT:
     """Replace matching ``nn.Linear`` layers with :class:`LoRALinear` in place.
 
-    Also freezes all non-LoRA parameters. Returns the same model.
+    Also freezes all non-LoRA parameters. Returns the same model object, typed as the
+    concrete model passed in (so ``model = inject_lora(decoder, cfg)`` stays a
+    ``DecoderLM``).
     """
     targets = [
         name

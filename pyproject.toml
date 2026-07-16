@@ -53,6 +53,10 @@ zenith = "zenith.cli.main:app"
 where = ["src"]
 exclude = ["zenith._incubating*"]
 
+# Ship the PEP 561 marker so downstream code type-checks against Zenith's types.
+[tool.setuptools.package-data]
+zenith = ["py.typed"]
+
 [tool.black]
 line-length = 100
 force-exclude = "src/zenith/_incubating"

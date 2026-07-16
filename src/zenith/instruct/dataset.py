@@ -17,9 +17,29 @@ from torch.utils.data import Dataset
 
 from .template import ChatTemplate
 
-__all__ = ["InstructionDataset", "load_instructions"]
+__all__ = ["InstructionDataset", "load_instructions", "mask_prompt"]
 
 IGNORE_INDEX = -100  # nn.CrossEntropyLoss default ignore_index
+
+
+def mask_prompt(
+    prompt_ids: list[int], response_ids: list[int], *, pad_id: int, max_length: int
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Build a fixed-length ``(input, target)`` pair supervising only the response.
+
+    ``prompt_ids`` and trailing padding are labelled :data:`IGNORE_INDEX`; the
+    ``response_ids`` (which already include any trailing EOS) are supervised. Shared
+    by :class:`InstructionDataset` and the grounded dataset so the masking lives in
+    one place.
+    """
+    ids = (prompt_ids + response_ids)[:max_length]
+    n_prompt = min(len(prompt_ids), len(ids))
+    content_len = len(ids)  # everything after this is padding
+    full = ids + [pad_id] * (max_length - len(ids))
+    # Label = the token, except prompt and pad positions which are ignored.
+    labels = [tok if n_prompt <= i < content_len else IGNORE_INDEX for i, tok in enumerate(full)]
+    # Shift for next-token prediction: input predicts the following label.
+    return torch.tensor(full[:-1], dtype=torch.long), torch.tensor(labels[1:], dtype=torch.long)
 
 
 class InstructionDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
@@ -45,16 +65,9 @@ class InstructionDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
     def _encode(self, instruction: str, response: str) -> tuple[torch.Tensor, torch.Tensor]:
         prompt_ids = self.tokenizer.encode(self.template.format_prompt(instruction))
         response_ids = self.tokenizer.encode(response) + [self.tokenizer.eos_id]
-        ids = (prompt_ids + response_ids)[: self.max_length]
-        n_prompt = min(len(prompt_ids), len(ids))
-        content_len = len(ids)  # everything after this is padding
-        full = ids + [self.tokenizer.pad_id] * (self.max_length - len(ids))
-        # Label = the token, except prompt and pad positions which are ignored.
-        labels = [tok if n_prompt <= i < content_len else IGNORE_INDEX for i, tok in enumerate(full)]
-        # Shift for next-token prediction: input predicts the following label.
-        input_ids = torch.tensor(full[:-1], dtype=torch.long)
-        target = torch.tensor(labels[1:], dtype=torch.long)
-        return input_ids, target
+        return mask_prompt(
+            prompt_ids, response_ids, pad_id=self.tokenizer.pad_id, max_length=self.max_length
+        )
 
     def __len__(self) -> int:
         return len(self.examples)
