@@ -8,10 +8,10 @@ deps until you use the module that needs them.
 | Module | Purpose | Public surface |
 | --- | --- | --- |
 | `zenith.models` | From-scratch decoder: configurable Llama-style (RoPE, RMSNorm, SwiGLU) or GPT-2-style, optional fused SDPA, tied embeddings + KV-cache (with rollback). | `DecoderLM`, `DecoderConfig`, `KVCache`, `RMSNorm` |
-| `zenith.tokenizers` | Byte-level tokenizer and a from-scratch, vectorized byte-level BPE. | `ByteTokenizer`, `BPETokenizer` |
+| `zenith.tokenizers` | Byte-level tokenizer and a from-scratch, vectorized byte-level BPE; reserved specials include a stable `<abstain>` (refusal) id. | `ByteTokenizer`, `BPETokenizer` |
 | `zenith.data` | Causal-LM dataset (next-token blocks) + corpus helpers. | `CausalLMDataset`, `encode_corpus`, `load_corpus_file`, `train_val_split` |
-| `zenith.generation` | Decoding: greedy, temperature, top-k, nucleus, beam, streaming, and greedy-exact speculative decoding. | `Generator`, `SpeculativeStats` |
-| `zenith.instruct` | Instruction fine-tuning: chat template + response-only loss masking. | `ChatTemplate`, `InstructionDataset`, `load_instructions` |
+| `zenith.generation` | Decoding: greedy, temperature, top-k, nucleus, beam, streaming, greedy-exact speculative decoding, and an optional constrained-decoding hook (mask logits to an allowed id set at trigger positions). | `Generator`, `SpeculativeStats`, `LogitsConstraint`, `AllowedTokens` |
+| `zenith.instruct` | Instruction fine-tuning: chat template + response-only loss masking; grounded SFT puts `(passage_id, text)` passages in the prompt and a cited answer or `<abstain>` in the target. | `ChatTemplate`, `InstructionDataset`, `load_instructions`, `mask_prompt`, `GroundedTemplate`, `GroundedInstructionDataset` |
 | `zenith.training` | Single-loop trainer (warmup/cosine, AMP, grad accumulation, LoRA, DDP). | `CausalLMTrainer`, `TrainingConfig` |
 | `zenith.evaluation` | Held-out loss and perplexity. | `evaluate`, `perplexity` |
 | `zenith.peft` | LoRA adapters injected into `nn.Linear`. | `LoraConfig`, `inject_lora`, `LoRALinear`, … |

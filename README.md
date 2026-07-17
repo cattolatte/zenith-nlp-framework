@@ -44,11 +44,14 @@ tokenizer and does not depend on Polaris.
   RMSNorm, SwiGLU) or GPT-2-style (LayerNorm, learned pos, GELU), from scratch, with
   an optional fused **SDPA** attention path (faster, numerically equivalent).
 - **Tokenizers** — a dependency-free byte-level tokenizer (`ByteTokenizer`) and a
-  from-scratch, trainable byte-level BPE (`BPETokenizer`), both lossless.
+  from-scratch, trainable byte-level BPE (`BPETokenizer`), both lossless, with
+  reserved specials including a first-class **`<abstain>`** (refusal) token.
 - **Text generation** (`Generator`) — greedy, temperature, top-k, nucleus (top-p),
   repetition penalty, and beam search, with a KV-cache and streaming; plus
   **greedy-exact speculative decoding** (a small draft model, output identical to
-  greedy — 3×+ fewer target forward passes, see [BENCHMARKS.md](BENCHMARKS.md)).
+  greedy — 3×+ fewer target forward passes, see [BENCHMARKS.md](BENCHMARKS.md)) and
+  **constrained decoding** (an optional `logits_constraint` hook; `AllowedTokens`
+  masks chosen positions to a caller-supplied id set).
 - **Causal-LM training** (`CausalLMTrainer`) — warmup/cosine schedule, gradient
   clipping, best-checkpoint saving, per-epoch samples, MLflow tracking, on-disk
   run records, and a deterministic mode.
@@ -168,8 +171,10 @@ src/zenith/
 The generative stack is **complete and released** (see the
 [releases](https://github.com/cattolatte/zenith-nlp-framework/releases)): a modern
 Llama-style model (RoPE / RMSNorm / SwiGLU, optional fused SDPA), decoding (sampling,
-beam, and greedy-exact **speculative decoding**), training, scaling (LoRA / AMP /
-DDP) with a measured scaling study, **instruction fine-tuning** (a mini chat model),
+beam, greedy-exact **speculative decoding**, and an optional **constrained-decoding**
+hook with a reserved `<abstain>` token), training, scaling (LoRA / AMP /
+DDP) with a measured scaling study, **instruction fine-tuning** (generic and
+**grounded** — passages in the prompt, cited answer or abstention in the target),
 tracking, serving, evaluation, a vectorized from-scratch BPE tokenizer, **int8
 quantized inference**, and optional Polaris interop — all covered by an offline test
 suite and CI (Python 3.10–3.12). It trains real models and matches the nanoGPT
